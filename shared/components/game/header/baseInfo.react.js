@@ -1,15 +1,17 @@
 import React from 'react';
 import moment from 'moment';
+import 'moment-duration-format';
 
-const BaseInfo = ({firstName, surname, gameId}) => {
+const BaseInfo = ({player, gameId, gameTime}) => {
 
-  const formatTime = () => moment().format('mm:ss');
+  const {firstName, surname} = player;
+  const formatTime = (time) => moment.duration(time).format('mm:ss');
 
   return (
     <div className="basic-info">
       <div>{`${firstName} ${surname}`}</div>
-      <div style={{marginLeft: '-20px'}}>{`Game ${gameId}`}</div>
-      <div>{`Time ${formatTime()}`}</div>
+      <div>{`Game ${gameId}`}</div>
+      <div>{`Time ${formatTime(gameTime)}`}</div>
     </div>
   )
 }

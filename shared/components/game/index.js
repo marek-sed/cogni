@@ -1,9 +1,19 @@
 import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import Header from './header';
-import Controls from './controls.react.js';
+import Controls from './controls';
 import BoardPanel from './boardPanel';
+import {update, move, beginRoundContinue}     from '../../actions/gameActions';
 import io from 'socket.io-client';
+import {Observable} from 'rx';
+
+function registerEvents(socket, dispatch) {
+  Observable.fromEvent(socket, 'move').subscribe(x => dispatch(move(x, false)));
+  Observable.fromEvent(socket, 'gameTime').subscribe(time => dispatch(update('gameTime', time)));
+  Observable.fromEvent(socket, 'roundTime').subscribe(time => dispatch(update('roundTime', time)));
+  Observable.fromEvent(socket, 'gameReady').subscribe(x => dispatch(update('isReady', x)));
+  Observable.fromEvent(socket, 'round').subscribe(round => dispatch(beginRoundContinue(round)));
+}
 
 class Game extends Component {
 
@@ -12,9 +22,10 @@ class Game extends Component {
   }
 
   componentDidMount() {
-    const {gameId, player} = this.props;
+    const {dispatch, gameId, player} = this.props;
     const socket = io({query: `gameId=${gameId}&role=${player.role}`});
-    socket.emit('join', 'this is some text');
+    this.socket = socket;
+    registerEvents(socket, dispatch);
   }
 
   render() {
@@ -27,8 +38,8 @@ class Game extends Component {
     return (
       <div className="game-panel base00-background">
         <Header {...this.props} />
-        <Controls {...this.props} />
-        <BoardPanel {...this.props} />
+        <Controls {...this.props} socket={this.socket} />
+        <BoardPanel {...this.props} socket={this.socket} />
       </div>
     );
   }

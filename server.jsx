@@ -4,6 +4,7 @@ import path                      from 'path';
 import Server                    from 'socket.io';
 import bodyParser                from 'body-parser';
 import join                      from './server/api/join';
+import {assignSocketTo}          from './server/cognito.js';
 
 const app = express();
 
@@ -15,7 +16,7 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 app.use(bodyParser.json());
 
-app.use('/join', join);
+app.post('/join', join);
 
 app.use('/', (req, res) => {
       const HTML = `
@@ -38,12 +39,11 @@ app.use('/', (req, res) => {
 
 const httpServer = http.Server(app)
 const io = new Server(httpServer);
+console.log('maxsockets', http.globalAgent.maxSockets)
 
 io.on('connection', socket => {
-  console.log('we have a new connection', socket.handshake.query);
-  socket.on('join', game => {
-    console.log('game', game);
-  })
+  const {gameId, role} = socket.handshake.query;
+  assignSocketTo(gameId, role, socket);
 });
 
 export default httpServer;

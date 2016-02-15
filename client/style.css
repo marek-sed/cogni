@@ -118,7 +118,7 @@ textarea, input {
 
 #main-view {
   display: flex;
-  height: 80%;
+  height: 100%;
   justify-content: center;
   align-items: center;
 }

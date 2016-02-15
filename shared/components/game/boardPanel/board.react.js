@@ -20,21 +20,22 @@ const canMove = (moveBy, tokenPosition) => {
   if(moveBy === -1 || moveBy === 1) {
     return Math.floor(tokenPosition / 3) === Math.floor((tokenPosition + moveBy) / 3);
   }
-  
+
   return 0 <= tokenPosition + moveBy && tokenPosition + moveBy < 9;
 }
 
 class Board extends Component {
 
   componentDidMount() {
-    const {dispatch} = this.props;
+    const {dispatch, socket} = this.props;
 
     this.disposeKeyUp = Observable
       .fromEvent(document.body, 'keyup')
+      .filter(() => this.props.player.role === this.props.currentRound.onTurn)
       .map(toMoveBy)
       .throttle(300 /* ms */)
-      .filter(moveBy => canMove(moveBy, this.props.tokenPosition))
-      .subscribe(moveBy => dispatch(move(this.props.tokenPosition + moveBy)));
+      .filter(moveBy => canMove(moveBy, this.props.currentRound.token.tokenPosition))
+      .subscribe(moveBy => dispatch(move(this.props.currentRound.token.tokenPosition + moveBy, socket)));
   }
 
   componentDidUnMount() {

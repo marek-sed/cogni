@@ -15,12 +15,13 @@
 
 .game-panel {
   display:flex;
+  margin: 20px 0;
   align-self: center;
   flex-direction: column;
   padding: 20px;
   border-radius: 10px; 
   color: #f5f4f1;
-  flex-basis: 50%;
+  flex-basis: 500px;
 }
 
 .game-panel .header {
@@ -30,7 +31,7 @@
   flex-direction: column;
   justify-content: space-between;
   flex: 1;
-  margin-bottom: 50px;
+  margin-bottom: 40px;
   font-size: 0.9em;
 }
 
@@ -41,22 +42,32 @@
   align-items: center;
 }
 
+.game-panel .header .basic-info div {
+  flex-basis: 0 1 166px;
+}
 .game-panel .header .game-info {
   display: flex;
   width: inherit;
   justify-content: space-between;
 }
 
-.game-panel .header .game-info .score,
-.game-panel .header .game-info .phase {
+.game-panel .header .game-info div.round {
   display: flex;
-}
-
-.game-panel .header .game-info .score {
   flex: 1;
+  justify-content: flex-start;
 }
 
-.game-panel .header .game-info .phase {
+.game-panel .header .game-info div.score {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  margin-right: 0px;
+}
+
+.game-panel .header .game-info div.phase {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .game-panel .header .message {
@@ -75,6 +86,7 @@
 
 .game-panel .controls {
   display: flex;
+  min-height: 30px;
   justify-content: space-between;
   flex: 1;
   margin-bottom: 5px;
@@ -113,8 +125,12 @@
   align-self: center;
 }
 
-.active {
+.active-mine {
   color: #f92672;
+}
+
+.active-observed {
+  color: #a6e22e;
 }
 
 .game-panel .board-panel .board {
@@ -141,4 +157,12 @@
   flex-wrap: wrap;
   flex: 1;
   justify-content: center;
+}
+
+.game-panel .board-panel .board .tile .signal {
+  text-align: left;
+}
+
+.game-panel .board-panel .board .tile .end {
+  text-align: right;
 }

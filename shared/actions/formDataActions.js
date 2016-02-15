@@ -21,7 +21,12 @@ function join(firstName, surname, game, role) {
 }
 
 function showError(error) {
-  error.response.text().then(alert);
+  if (error.reponse) {
+    error.response.text().then(alert);
+  }
+  else {
+    alert(error);
+  }
 }
 
 function handleResponse(response) {

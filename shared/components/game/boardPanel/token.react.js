@@ -1,18 +1,18 @@
 import React from 'react';
 
-const Token = ({tokenPosition}) => {
-  console.log('new position', tokenPosition);
+const Token = ({currentRound: {onTurn, token: {tokenPosition}}, player: {role}}) => {
 
+  console.log('new tokenPosition', tokenPosition);
   const translations = [
-    'translate(-165px, -145px)',
-    'translate(-15px, -145px)',
-    'translate(135px, -145px)',
-    'translate(-165px, -15px)',
-    'translate(-15px, -15px)',
-    'translate(135px, -15px)',
-    'translate(-165px, 115px)',
-    'translate(-15px, 115px)',
-    'translate(135px, 115px)',
+    'translate(-180px, -160px)',
+    'translate(-30px, -160px)',
+    'translate(120px, -160px)',
+    'translate(-180px, -30px)',
+    'translate(-30px, -30px)',
+    'translate(120px, -30px)',
+    'translate(-180px, 100px)',
+    'translate(-30px, 100px)',
+    'translate(120px, 100px)',
   ]
 
   const style = {
@@ -23,8 +23,13 @@ const Token = ({tokenPosition}) => {
     transition: '0.3s'
   }
 
+  const fillColor = !onTurn ? '#383830'
+                  : onTurn === role
+                  ? '#f92672'
+                  : '#a6e22e';
+
   return (
-      <svg style={style} width="30" height="30"><circle cx="15" cy="15" r="15" fill="#f92672"></circle></svg>
+      <svg style={style} width="60" height="60"><circle cx="30" cy="30" r="15" fill={fillColor}></circle></svg>
   )
 }
 
