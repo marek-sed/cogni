@@ -1,4 +1,7 @@
-import {MOVE, UPDATE_GAME, PHASE_2, PHASE_1, BEGIN_ROUND, BEGIN_ROUND_CONTINUE, END_TURN} from './actionTypes.js';
+import {MOVE, UPDATE_GAME,
+        PHASE_2, PHASE_1,
+        BEGIN_ROUND, BEGIN_ROUND_CONTINUE, END_TURN,
+        OBSERVERS_TURN, END_ROUND} from './actionTypes.js';
 
 export function move(nextPosition, socket) {
   if (socket) socket.emit('move', nextPosition);
@@ -39,10 +42,30 @@ export function beginRoundContinue(round) {
   }
 }
 
-export function endTurn() {
+export function observersTurn({role, senderEndPosition}) {
+  return {
+    type:    OBSERVERS_TURN,
+    payload: {
+      role:              role,
+      senderEndPosition: senderEndPosition
+    }
+  }
+}
+
+export function endTurn(socket) {
+  socket.emit('endTurn');
   return {
     type:    END_TURN,
     payload: {}
+  }
+}
+
+export function endRound(phase) {
+  return {
+    type:    END_ROUND,
+    payload: {
+      phase: phase
+    }
   }
 }
 

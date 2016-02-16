@@ -1,8 +1,7 @@
 import React from 'react';
 
-const Token = ({currentRound: {onTurn, token: {tokenPosition}}, player: {role}}) => {
+const Token = ({position, opacity, color}) => {
 
-  console.log('new tokenPosition', tokenPosition);
   const translations = [
     'translate(-180px, -160px)',
     'translate(-30px, -160px)',
@@ -17,24 +16,21 @@ const Token = ({currentRound: {onTurn, token: {tokenPosition}}, player: {role}})
 
   const style = {
     position:   'absolute',
+    opacity:    opacity,
     top:        '50%',
     left:       '50%',
-    transform:  translations[tokenPosition],
+    transform:  translations[position],
     transition: '0.3s'
   }
 
-  const fillColor = !onTurn ? '#383830'
-                  : onTurn === role
-                  ? '#f92672'
-                  : '#a6e22e';
-
   return (
-      <svg style={style} width="60" height="60"><circle cx="30" cy="30" r="15" fill={fillColor}></circle></svg>
+      <svg style={style} width="60" height="60"><circle cx="30" cy="30" r="15" fill={color}></circle></svg>
   )
 }
 
 Token.defaultProps = {
-  tokenPosition: 8
+  tokenPosition: 8,
+  opacity: 1
 }
 
 export default Token;

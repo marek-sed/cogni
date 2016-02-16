@@ -24,6 +24,13 @@ const canMove = (moveBy, tokenPosition) => {
   return 0 <= tokenPosition + moveBy && tokenPosition + moveBy < 9;
 }
 
+const tokenColorMap = {
+  '':           '#383830',
+  Sender:       '#f92672',
+  Receiver:     '#a6e22e' ,
+  Eavesdropper: '#f2971f'
+}
+
 class Board extends Component {
 
   componentDidMount() {
@@ -43,10 +50,20 @@ class Board extends Component {
   }
 
   render() {
+    const {currentRound: {onTurn, token: {tokenPosition, senderEndPosition}},
+      player: {role}} = this.props;
+
+    const senderToken = role !== 'Sender' && senderEndPosition
+                      ? <Token position={senderEndPosition} color='#f92672' opacity={0.2} />
+                      : null;
+
+    const tokenColor = tokenColorMap[onTurn];
+
     return (
       <div className="tokenizer">
         <Tiles {...this.props} />
-        <Token {...this.props} />
+        <Token position={tokenPosition} color={tokenColor} />
+        {senderToken}
       </div>
     )
   }

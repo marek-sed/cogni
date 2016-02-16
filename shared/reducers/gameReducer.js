@@ -1,5 +1,6 @@
 import {fromJS, Map} from 'immutable';
-import {MOVE, INIT, UPDATE_GAME, BEGIN_ROUND_CONTINUE} from '../actions/actionTypes.js';
+import {MOVE, INIT, UPDATE_GAME, BEGIN_ROUND_CONTINUE,
+        OBSERVERS_TURN, END_ROUND} from '../actions/actionTypes.js';
 
 const player = fromJS({
   firstName: 'John',
@@ -27,8 +28,8 @@ const gameState = fromJS({
 
 const initialState = fromJS({
   gameId:       1,
-  gameTime:     50 * 60 * 1000,
-  roundTime:    10 * 1000,
+  gameTime:     70 * 60 * 1000,
+  roundTime:    20 * 1000,
   isReady:      false,
   gameState:    gameState,
   player:       player,
@@ -43,11 +44,13 @@ export default function reducer(state = initialState, action = {}) {
     const player = Map({firstName, surname, role})
     return state.set('gameId', gameId).set('player', player);
   }
-  case MOVE: return state.setIn(
-    ['currentRound', 'token', 'tokenPosition'],
-    action.payload.nextPosition);
+  case MOVE: return state.setIn(['currentRound', 'token', 'tokenPosition'], action.payload.nextPosition);
   case UPDATE_GAME: return state.set(action.payload.key, action.payload.value);
   case BEGIN_ROUND_CONTINUE: return state.set('currentRound', fromJS(action.payload.round))
+  case OBSERVERS_TURN: return state.setIn(['currentRound', 'onTurn'], action.payload.role)
+      .setIn(['currentRound', 'token', 'tokenPosition'], 4).setIn(['currentRound', 'token', 'senderEndPosition'], action.payload.senderEndPosition);
+  case END_ROUND: return state.setIn(['currentRound', 'onTurn'], '')
+      .setIn(['gameState', 'phase'], action.payload.phase);
   }
 
   return state;

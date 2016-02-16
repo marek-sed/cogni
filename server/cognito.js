@@ -1,4 +1,4 @@
-import {Map, List, Record} from 'immutable';
+import {Map, List, Record, fromJS} from 'immutable';
 import {Observable} from 'rx';
 
 const PlayerRecord = Record({
@@ -17,7 +17,6 @@ const makeGame = () => Map({
   Sender:       {},
   Receiver:     {},
   EavesDropper: {},
-  rounds:       List()
 })
 
 
@@ -56,14 +55,12 @@ export function assignSocketTo(gameId, role, socket) {
   games = games.setIn([gameId, 'gameRoom'], gameRoom);
   socket.join(gameRoom);
   games = games.setIn([gameId, 'sockets', role], socket);
+  registerEvents(socket, gameId, role);
   if(isGameReady(gameId)) {
+    subscribeToGame(gameId, role);
     socket.emit('gameReady', true);
     socket.broadcast.to(gameRoom).emit('gameReady', true);
   }
-
-  console.log('gameId - role', gameId, role);
-  registerEvents(socket, gameId, role);
-  subscribeToGame(gameId);
 }
 
 function registerEvents(socket, gameId, role) {
@@ -78,7 +75,7 @@ function registerSenderEvents(socket, gameId, role) {
   const senderSources = {};
   senderSources.move = Observable.fromEvent(socket, 'move');
   senderSources.beginRound = Observable.fromEvent(socket, 'beginRound');
-  senderSources.endTurn = Observable.fromEvent(socket, 'endRound');
+  senderSources.endTurn = Observable.fromEvent(socket, 'endTurn');
 
   games = games.setIn([gameId, 'sources', role], senderSources);
 }
@@ -86,6 +83,7 @@ function registerSenderEvents(socket, gameId, role) {
 function registerReceiverEvents(socket, gameId, role) {
   const receiverSources = {};
   receiverSources.move = Observable.fromEvent(socket, 'move');
+  receiverSources.endTurn = Observable.fromEvent(socket, 'endTurn');
 
   games = games.setIn([gameId, 'sources', role], receiverSources);
 }
@@ -93,13 +91,13 @@ function registerReceiverEvents(socket, gameId, role) {
 function registerEavesdropperEvents(socket, gameId, role) {
   const eavesdropperSources = {};
   eavesdropperSources.move = Observable.fromEvent(socket, 'move');
+  eavesdropperSources.endTurn = Observable.fromEvent(socket, 'endTurn');
 
   games = games.setIn([gameId, 'sources', role], eavesdropperSources);
 }
 
 
 function subscribeToGame(gameId) {
-  const phase = games.getIn([gameId, 'phase']);
   const SenderSource = games.getIn([gameId, 'sources', 'Sender']);
   const ReceiverSource = games.getIn([gameId, 'sources', 'Receiver']);
   const EavesdropperSource = games.getIn([gameId, 'sources', 'Eavesdropper']);
@@ -107,22 +105,28 @@ function subscribeToGame(gameId) {
   const SenderSocket = games.getIn([gameId, 'sockets', 'Sender']);
   const ReceiverSocket = games.getIn([gameId, 'sockets', 'Receiver']);
   const EavesdropperSocket = games.getIn([gameId, 'sockets', 'EavesDropper']);
-  
+
   SenderSource.beginRound.subscribe(beginRound(gameId));
-  SenderSource.move.subscribe(nextPosition => moveTo(phase, nextPosition, [ReceiverSocket, EavesdropperSocket]));
-  ReceiverSource.move.subscribe(nextPosition => moveTo(phase, nextPosition, [SenderSocket]))
+  SenderSource.move.subscribe(nextPosition => moveTo(gameId, nextPosition, 'Sender', [ReceiverSocket, EavesdropperSocket]));
+  SenderSource.endTurn.subscribe(() => observersTurn(gameId));
+
+  ReceiverSource.move.subscribe(nextPosition => moveTo(gameId, nextPosition, 'Receiver', [SenderSocket]))
+  ReceiverSource.endTurn.subscribe(() => endRound(gameId));
+
+  EavesdropperSource.move.subscribe(nextPosition => recordMovement(gameId, nextPosition, 'Eavesdropper'));
+  EavesdropperSource.endTurn.zip(ReceiverSource.endTurn).subscribe(() => endRound(gameId));
 }
 
 const gameTime = 70 * 60 * 1000;
-const turnTime = 20 * 1000;
-const gameTimer = Observable.interval(500).timeInterval().pluck('interval')
-        .scan((acc, x) => acc - x, gameTime).takeWhile(x => x > 0);
-const turnTimer = Observable.interval(500).timeInterval().pluck('interval')
-        .scan((acc, x) => acc - x, turnTime).takeWhile(x => x > 0);
+const turnTime = 5 * 1000;
+const gameTimerSource = Observable.interval(500).timeInterval().pluck('interval') .scan((acc, x) => acc - x, gameTime);
 
-const startGameTimer = (Sender, gameRoom) => gameTimer.subscribe(time => {Sender.broadcast.to(gameRoom).emit('gameTime', time); Sender.emit('gameTime', time)});
+const turnTimerSource = Observable.interval(500).timeInterval().pluck('interval') .scan((acc, x) => acc - x, turnTime);
+
+const startGameTimer = (Sender, gameRoom) => gameTimerSource.takeWhile(x => x > 0).subscribe(time => {Sender.broadcast.to(gameRoom).emit('gameTime', time); Sender.emit('gameTime', time)});
 
 function beginRound(gameId) {
+  console.log('beginRound');
   return () => {
     const {Sender, Receiver, Eavesdropper} = games.getIn([gameId, 'sockets']).toJS();
     const gameRoom = games.getIn([gameId, 'gameRoom']);
@@ -133,10 +137,13 @@ function beginRound(gameId) {
       games = games.setIn([gameId, 'phase'], 1);
     }
 
-    const roundId = rounds.size + 1;
+    const gameRounds = rounds.get(gameId);
+    const roundId = gameRounds ? gameRounds.size + 1 : 1;
+    const startPosition = Map({position: 4, time: Date.now()});
     const round = makeRound(roundId, 'Sender');
     games = games.setIn([gameId, 'currentRoundId'], roundId);
-    rounds = rounds.setIn([gameId, roundId], round);
+    rounds = rounds.setIn([gameId, roundId], fromJS(round));
+    rounds = rounds.setIn([gameId, roundId, 'moves', 'Sender'], List.of(startPosition));
     Sender.emit('round', round);
     Receiver.emit('round', round);
 
@@ -144,10 +151,10 @@ function beginRound(gameId) {
       Eavesdropper.emit('round', round);
     }
 
-    games.setIn([gameId, 'endRound'], turnTimer.subscribe(
+    games = games.setIn([gameId, 'turnTimerSubscription'], turnTimerSource.takeWhile(x => x > 0).subscribe(
       x => emitTurnTime(gameId, x),
       () => {},
-      () => nextTurn(gameId)
+      () => observersTurn(gameId, roundId)
     ));
   }
 }
@@ -162,31 +169,55 @@ function emitTurnTime(gameId, time) {
 }
 
 
-function nextTurn(gameId) {
+function observersTurn(gameId, roundId) {
+  console.log('observersTurn');
   const {Sender, Receiver, Eavesdropper} = games.getIn([gameId, 'sockets']).toJS();
   const phase = games.getIn([gameId, 'phase']);
+  const ttsub = games.getIn([gameId, 'turnTimerSubscription']);
+  if(!ttsub.isDisposed) ttsub.dispose();
 
-  const nextRound = makeRound(rounds.size + 1, 'Receiver');
-  Sender.emit('nextTurn', nextRound);
-  Receiver.emit('nextTurn', nextRound);
-  if (phase === 2) Eavesdropper.emit('endTurn', nextRound.set('onTurn', 'Eavesdropper'));
+  const startPosition = Map({position: 4, time: Date.now()});
+  rounds = rounds.setIn([gameId, roundId, 'moves', 'Receiver'], List.of(startPosition))
+    .setIn([gameId, roundId, 'moves', 'Eavesdropper'], List.of(startPosition));
 
-  games = games.setIn([gameId, 'endRound'],
-                      turnTimer.subscribe(
+  const senderMoves = rounds.getIn([gameId, roundId, 'moves', 'Sender']);
+  const senderEndPosition = senderMoves ? senderMoves.last().get('position') : 4;
+  Sender.emit('observersTurn', {role: 'Receiver', senderEndPosition: senderEndPosition});
+  Receiver.emit('observersTurn', {role: 'Receiver', senderEndPosition: senderEndPosition});
+  if (phase === 2) Eavesdropper.emit('observersTurn', {role: 'Eavesdropper', senderEndPosition: senderEndPosition});
+
+  games = games.setIn([gameId, 'turnTimerSubscription'],
+                      turnTimerSource.takeWhile(x => x > 0).subscribe(
                         x => emitTurnTime(gameId, x),
+                        () => {},
                         () => endRound(gameId)))
 }
 
 function endRound(gameId) {
+  console.log('endRound');
   const {Sender, Receiver, Eavesdropper} = games.getIn([gameId, 'sockets']).toJS();
   const phase = games.getIn([gameId, 'phase']);
+  const ttsub = games.getIn([gameId, 'turnTimerSubscription']);
+  if(!ttsub.isDisposed) ttsub.dispose();
 
-  Sender.emit('endRound');
-  Receiver.emit('endRound');
-  if (phase === 2) Eavesdropper.emit('endRound');
+  Sender.emit('endRound', phase);
+  Receiver.emit('endRound', phase);
+  if (phase === 2) Eavesdropper.emit('endRound', phase);
 }
 
-function moveTo(nextPosition, phase, [Receiver, Eavesdropper]) {
-  Receiver.emit('move', nextPosition);
+function moveTo(gameId, nextPosition, role, [Sender, Receiver, Eavesdropper]) {
+  const phase = games.getIn([gameId, 'phase']);
+
+  recordMovement(gameId, nextPosition, role);
+  if (Sender) Sender.emit('move', nextPosition);
+  if (Receiver) Receiver.emit('move', nextPosition);
   if (Eavesdropper && phase === 2) Eavesdropper.emit('move', nextPosition);
+}
+
+function recordMovement(gameId, position, role) {
+  const roundId = games.getIn([gameId, 'currentRoundId']);
+  const time = Date.now();
+  console.log('rounds', rounds.getIn([gameId, roundId, 'moves']).toJS());
+  rounds = rounds.updateIn([gameId, roundId, 'moves', role],
+              moves => moves.push(fromJS({position: position, time: time})))
 }
