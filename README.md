@@ -1,6 +1,6 @@
-## Isomorphic Redux Demo
+## Game for cognitive science research
 
-Basic isomorphic app built on [Redux](https://github.com/gaearon/redux)
+Build on Express, Socket.io, React and [Redux](https://github.com/gaearon/redux)
 
 ```
 $ npm run dev
