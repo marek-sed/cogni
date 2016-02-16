@@ -143,6 +143,7 @@
 }
 
 .game-panel .board-panel .board .tile {
+  position: relative;
   width: 150px;
   height: 130px;
   border: 1px solid #383830;

@@ -1,4 +1,4 @@
-import http                      from 'http'
+import http                      from 'http';
 import express                   from 'express';
 import path                      from 'path';
 import Server                    from 'socket.io';
@@ -37,9 +37,9 @@ app.use('/', (req, res) => {
     res.end(HTML);
 });
 
-const httpServer = http.Server(app)
+const httpServer = http.Server(app);
 const io = new Server(httpServer);
-console.log('maxsockets', http.globalAgent.maxSockets)
+console.log('maxsockets', http.globalAgent.maxSockets);
 
 io.on('connection', socket => {
   const {gameId, role} = socket.handshake.query;

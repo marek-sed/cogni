@@ -2,8 +2,17 @@ import React from 'react';
 import moment from 'moment';
 import 'moment-duration-format';
 
+const colorMap = {
+  '':           '#383830',
+  Sender:       '#f92672',
+  Receiver:     '#a6e22e' ,
+  Eavesdropper: '#f2971f'
+}
+
 const TurnInfo = ({player: {role}, currentRound: {onTurn}, roundTime}) => {
 
+  const roleColor = colorMap[role];
+  const observedRoleColor = colorMap[role === 'Sender' ? 'Receiver' : 'Sender'];
   role = role === 'Eavesdropper' ? 'ED' : role;
   const observedRole = role === 'Sender' ? 'Receiver' : 'Sender';
 
@@ -14,9 +23,9 @@ const TurnInfo = ({player: {role}, currentRound: {onTurn}, roundTime}) => {
 
   return (
     <div className="turn-info">
-      <div className={mineClassName}>{role}</div>
+      <div style={{color: roleColor}} className={mineClassName}>{role}</div>
       <div className="time">{formatTime(roundTime)}</div>
-      <div className={observedClassName}>{observedRole}</div>
+      <div style={{color: observedRoleColor}} className={observedClassName}>{observedRole}</div>
     </div>
   )
 }

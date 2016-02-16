@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import Tiles from './tiles.react.js';
 import Token from './token.react.js';
-import {Observable} from 'rx'; 
+import {Observable} from 'rx';
 import {move} from '../../../actions/gameActions.js';
 
 const toMoveBy = evt => {
@@ -50,11 +50,10 @@ class Board extends Component {
   }
 
   render() {
-    const {currentRound: {onTurn, token: {tokenPosition, senderEndPosition}},
-      player: {role}} = this.props;
+    const {currentRound: {onTurn, token: {tokenPosition, senderEndPosition}}} = this.props;
 
-    const senderToken = role !== 'Sender' && senderEndPosition
-                      ? <Token position={senderEndPosition} color='#f92672' opacity={0.2} />
+    const senderToken = senderEndPosition
+                      ? <Token top="41%" left="64%" radius={10} position={senderEndPosition} color="#f92672" opacity={0.8} />
                       : null;
 
     const tokenColor = tokenColorMap[onTurn];
@@ -62,8 +61,8 @@ class Board extends Component {
     return (
       <div className="tokenizer">
         <Tiles {...this.props} />
-        <Token position={tokenPosition} color={tokenColor} />
         {senderToken}
+        <Token top="50%" left="50%" radius={15} position={tokenPosition} color={tokenColor} opacity={onTurn === '' ? 0.9 : 1} />
       </div>
     )
   }
