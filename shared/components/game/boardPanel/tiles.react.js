@@ -2,8 +2,10 @@ import React from 'react';
 import Tile from './tile.react.js';
 import _ from 'lodash';
 
-const Tiles = ({currentRound: { token: {signalPosition, endPosition}}}) => {
-  const getText = id => id === signalPosition && signalPosition === endPosition ? 'signal/end'
+const Tiles = ({currentRound: { token: {signalPosition, endPosition}}, player: {role}}) => {
+  const getText = id => role !== 'Sender' ? ''
+                    : id === signalPosition && signalPosition === endPosition
+                    ? 'signal/end'
                     : id === signalPosition ? 'signal'
                     : id === endPosition
                     ? 'end'

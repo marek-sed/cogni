@@ -50,19 +50,21 @@ class Board extends Component {
   }
 
   render() {
-    const {currentRound: {onTurn, token: {tokenPosition, senderEndPosition}}} = this.props;
+    const {currentRound: {onTurn, token: {tokenPosition, senderEndPosition}}
+    , player: {role}} = this.props;
 
+    const senderTokenColor = role === 'Sender' ? '#f92672' : tokenColorMap[''];
     const senderToken = senderEndPosition
-                      ? <Token top="41%" left="64%" radius={10} position={senderEndPosition} color="#f92672" opacity={0.8} />
+                      ? <Token top="41%" left="64%" radius={10} position={senderEndPosition} color={senderTokenColor} opacity={1} />
                       : null;
 
-    const tokenColor = tokenColorMap[onTurn];
+    const tokenColor = role === onTurn ? tokenColorMap[role] : tokenColorMap[''];
 
     return (
       <div className="tokenizer">
         <Tiles {...this.props} />
         {senderToken}
-        <Token top="50%" left="50%" radius={15} position={tokenPosition} color={tokenColor} opacity={onTurn === '' ? 0.9 : 1} />
+        <Token top="50%" left="50%" radius={15} position={tokenPosition} color={tokenColor} opacity={onTurn === '' ? 0.5 : 1} />
       </div>
     )
   }

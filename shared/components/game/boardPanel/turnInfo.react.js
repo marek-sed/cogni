@@ -12,7 +12,7 @@ const colorMap = {
 const TurnInfo = ({player: {role}, currentRound: {onTurn}, roundTime}) => {
 
   const roleColor = colorMap[role];
-  const observedRoleColor = colorMap[role === 'Sender' ? 'Receiver' : 'Sender'];
+  const observedRoleColor = '#f5f4f1';
   role = role === 'Eavesdropper' ? 'ED' : role;
   const observedRole = role === 'Sender' ? 'Receiver' : 'Sender';
 
