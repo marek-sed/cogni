@@ -3,6 +3,7 @@ import {connect} from 'react-redux';
 import Header from './header';
 import Controls from './controls';
 import BoardPanel from './boardPanel';
+import Modal from './modal.react.js';
 import {update, move, beginRoundContinue, observersTurn, endRound} from '../../actions/gameActions';
 import io from 'socket.io-client';
 import {Observable} from 'rx';
@@ -14,7 +15,7 @@ function registerEvents(socket, dispatch) {
   Observable.fromEvent(socket, 'gameReady').subscribe(x => dispatch(update('isReady', x)));
   Observable.fromEvent(socket, 'round').subscribe(round => dispatch(beginRoundContinue(round)));
   Observable.fromEvent(socket, 'observersTurn').subscribe(role => dispatch(observersTurn(role)));
-  Observable.fromEvent(socket, 'endRound').subscribe(phase => dispatch(endRound(phase)));
+  Observable.fromEvent(socket, 'endRound').subscribe(result => dispatch(endRound(result)));
 }
 
 class Game extends Component {
@@ -42,6 +43,7 @@ class Game extends Component {
         <Header {...this.props} />
         <Controls {...this.props} socket={this.socket} />
         <BoardPanel {...this.props} socket={this.socket} />
+        <Modal {...this.props} socket={this.socket} />
       </div>
     );
   }

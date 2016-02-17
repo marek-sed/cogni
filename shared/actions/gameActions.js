@@ -1,5 +1,5 @@
 import {MOVE, UPDATE_GAME,
-        PHASE_2, PHASE_1,
+        PHASE_CHANGE, PHASE_CHANGE_CONFIRM, PHASE_CHANGE_REJECT,
         BEGIN_ROUND, BEGIN_ROUND_CONTINUE, END_TURN,
         OBSERVERS_TURN, END_ROUND} from './actionTypes.js';
 
@@ -60,25 +60,21 @@ export function endTurn(socket) {
   }
 }
 
-export function endRound(phase) {
+export function endRound({phase, result}) {
+
   return {
     type:    END_ROUND,
     payload: {
-      phase: phase
+      phase:  phase,
+      result: result
     }
   }
 }
 
-export function startPhase2() {
+export function startPhase2(socket, phase) {
+  socket.emit('phaseChange');
   return {
-    type:    PHASE_2,
-    payload: {}
-  }
-}
-
-export function backToPhase1() {
-  return {
-    type:    PHASE_1,
+    type:    PHASE_CHANGE,
     payload: {}
   }
 }

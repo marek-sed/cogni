@@ -1,6 +1,7 @@
 import {fromJS, Map} from 'immutable';
 import {MOVE, INIT, UPDATE_GAME, BEGIN_ROUND_CONTINUE,
-        OBSERVERS_TURN, END_ROUND} from '../actions/actionTypes.js';
+        OBSERVERS_TURN, END_ROUND,
+        PHASE_CHANGE, PHASE_CHANGE_REJECT, PHASE_CHANGE_CONFIRM} from '../actions/actionTypes.js';
 
 const player = fromJS({
   firstName: 'John',
@@ -21,9 +22,10 @@ const round = fromJS({
 })
 
 const gameState = fromJS({
-  phase:  0,
-  score1: 0,
-  score2: 0
+  phase:         0,
+  score1:        0,
+  score2:        0,
+  activeRequest: true,
 })
 
 const initialState = fromJS({
@@ -34,7 +36,7 @@ const initialState = fromJS({
   gameState:    gameState,
   player:       player,
   currentRound: round,
-  message:      'receiver on correct position',
+  message:      'no rounds played',
 })
 
 export default function reducer(state = initialState, action = {}) {
@@ -50,7 +52,14 @@ export default function reducer(state = initialState, action = {}) {
   case OBSERVERS_TURN: return state.setIn(['currentRound', 'onTurn'], action.payload.role)
       .setIn(['currentRound', 'token', 'tokenPosition'], 4).setIn(['currentRound', 'token', 'senderEndPosition'], action.payload.senderEndPosition);
   case END_ROUND: return state.setIn(['currentRound', 'onTurn'], '')
-      .setIn(['gameState', 'phase'], action.payload.phase);
+      .update('gameState',gameState => gameState.merge(Map({phase:  action.payload.phase,
+                                                            score1: action.payload.result.score1,
+                                                            score2: action.payload.result.score2})))
+      .set('message', action.payload.result.message);
+  case PHASE_CHANGE: return state.setIn(['gameState', 'activeRequest'], true);
+  case PHASE_CHANGE_CONFIRM: return state
+      .updateIn(gameState => gameState.set('phase', action.payload.phase).set('activeRequest', false));
+  case PHASE_CHANGE_REJECT: return state.setIn(['gameState', 'activeRequest'], false);
   }
 
   return state;
