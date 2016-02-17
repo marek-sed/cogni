@@ -120,7 +120,7 @@ function subscribeToGame(gameId) {
 }
 
 const gameTime = 70 * 60 * 1000;
-const turnTime = 5 * 1000;
+const turnTime = 20 * 1000;
 const gameTimerSource = Observable.interval(500).timeInterval().pluck('interval') .scan((acc, x) => acc - x, gameTime);
 
 const turnTimerSource = Observable.interval(500).timeInterval().pluck('interval') .scan((acc, x) => acc - x, turnTime);
