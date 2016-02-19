@@ -3,8 +3,8 @@ import {connect} from 'react-redux';
 import Header from './header';
 import Controls from './controls';
 import BoardPanel from './boardPanel';
-import Modal from './modal.react.js';
-import {update, move, beginRoundContinue, observersTurn, endRound} from '../../actions/gameActions';
+import PhaseChanger from './phaseChanger.react.js';
+import {update, move, beginRoundContinue, observersTurn, endRound, changePhaseRequest, changePhaseResponse} from '../../actions/gameActions';
 import io from 'socket.io-client';
 import {Observable} from 'rx';
 
@@ -16,6 +16,8 @@ function registerEvents(socket, dispatch) {
   Observable.fromEvent(socket, 'round').subscribe(round => dispatch(beginRoundContinue(round)));
   Observable.fromEvent(socket, 'observersTurn').subscribe(role => dispatch(observersTurn(role)));
   Observable.fromEvent(socket, 'endRound').subscribe(result => dispatch(endRound(result)));
+  Observable.fromEvent(socket, 'changePhase').subscribe(actionRequired => dispatch(changePhaseRequest(actionRequired)));
+  Observable.fromEvent(socket, 'changePhaseResponse').subscribe(response => dispatch(changePhaseResponse(response)))
 }
 
 class Game extends Component {
@@ -43,10 +45,10 @@ class Game extends Component {
         <Header {...this.props} />
         <Controls {...this.props} socket={this.socket} />
         <BoardPanel {...this.props} socket={this.socket} />
-        <Modal {...this.props} socket={this.socket} />
+        <PhaseChanger {...this.props} socket={this.socket} />
       </div>
     );
   }
 }
 
-export default connect(state => ({...state.game.toJS()}))(Game); 
+export default connect(state => ({...state.game.toJS()}))(Game);

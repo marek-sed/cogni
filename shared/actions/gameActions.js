@@ -1,7 +1,7 @@
 import {MOVE, UPDATE_GAME,
         PHASE_CHANGE, PHASE_CHANGE_CONFIRM, PHASE_CHANGE_REJECT,
         BEGIN_ROUND, BEGIN_ROUND_CONTINUE, END_TURN,
-        OBSERVERS_TURN, END_ROUND} from './actionTypes.js';
+        OBSERVERS_TURN, END_ROUND } from './actionTypes.js';
 
 export function move(nextPosition, socket) {
   if (socket) socket.emit('move', nextPosition);
@@ -71,10 +71,44 @@ export function endRound({phase, result}) {
   }
 }
 
-export function startPhase2(socket, phase) {
-  socket.emit('phaseChange');
+export function changePhase(socket, phase) {
+  if(socket) socket.emit('changePhase', phase);
   return {
     type:    PHASE_CHANGE,
+    payload: {
+      actionRequired: false
+    }
+  }
+}
+
+export function changePhaseRequest(actionRequired) {
+  return {
+    type:    PHASE_CHANGE,
+    payload: {
+      actionRequired: actionRequired
+    }
+  }
+}
+
+export function changePhaseResponse({phase, response}) {
+  return response ? changeConfirm(null, phase)
+    : changeReject(null);
+}
+
+export function changeConfirm(socket, phase) {
+  if(socket) socket.emit('changePhaseResponse', true);
+  return {
+    type:    PHASE_CHANGE_CONFIRM,
+    payload: {
+      phase: phase
+    }
+  }
+}
+
+export function changeReject(socket) {
+  if(socket) socket.emit('changePhaseResponse', false);
+  return {
+    type:    PHASE_CHANGE_REJECT,
     payload: {}
   }
 }

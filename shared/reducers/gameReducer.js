@@ -1,6 +1,6 @@
 import {fromJS, Map} from 'immutable';
-import {MOVE, INIT, UPDATE_GAME, BEGIN_ROUND_CONTINUE,
-        OBSERVERS_TURN, END_ROUND,
+import {MOVE, INIT, UPDATE_GAME, BEGIN_ROUND, BEGIN_ROUND_CONTINUE,
+        OBSERVERS_TURN, END_TURN, END_ROUND,
         PHASE_CHANGE, PHASE_CHANGE_REJECT, PHASE_CHANGE_CONFIRM} from '../actions/actionTypes.js';
 
 const player = fromJS({
@@ -22,21 +22,27 @@ const round = fromJS({
 })
 
 const gameState = fromJS({
-  phase:         0,
-  score1:        0,
-  score2:        0,
-  activeRequest: false,
+  phase:  1,
+  score1: 0,
+  score2: 0
+})
+
+const phaseChanger = fromJS({
+  activeRequest:  false,
+  actionRequired: false
 })
 
 const initialState = fromJS({
   gameId:       1,
   gameTime:     70 * 60 * 1000,
   roundTime:    20 * 1000,
+  isStarted:    false,
   isReady:      false,
   gameState:    gameState,
   player:       player,
   currentRound: round,
-  message:      'no rounds played',
+  message:      '',
+  phaseChanger: phaseChanger
 })
 
 export default function reducer(state = initialState, action = {}) {
@@ -48,18 +54,22 @@ export default function reducer(state = initialState, action = {}) {
   }
   case MOVE: return state.setIn(['currentRound', 'token', 'tokenPosition'], action.payload.nextPosition);
   case UPDATE_GAME: return state.set(action.payload.key, action.payload.value);
-  case BEGIN_ROUND_CONTINUE: return state.set('currentRound', fromJS(action.payload.round))
+  case BEGIN_ROUND: return state.set('isStarted', true);
+  case BEGIN_ROUND_CONTINUE: return state.set('currentRound', fromJS(action.payload.round));
   case OBSERVERS_TURN: return state.setIn(['currentRound', 'onTurn'], action.payload.role)
       .setIn(['currentRound', 'token', 'tokenPosition'], 4).setIn(['currentRound', 'token', 'senderEndPosition'], action.payload.senderEndPosition);
+  case END_TURN: return state.setIn(['currentRound', 'onTurn'], '');
   case END_ROUND: return state.setIn(['currentRound', 'onTurn'], '')
       .update('gameState',gameState => gameState.merge(Map({phase:  action.payload.phase,
                                                             score1: action.payload.result.score1,
                                                             score2: action.payload.result.score2})))
       .set('message', action.payload.result.message);
-  case PHASE_CHANGE: return state.setIn(['gameState', 'activeRequest'], true);
+  case PHASE_CHANGE: return state.setIn(['phaseChanger', 'activeRequest'], true)
+      .setIn(['phaseChanger', 'actionRequired'], action.payload.actionRequired);
   case PHASE_CHANGE_CONFIRM: return state
-      .updateIn(gameState => gameState.set('phase', action.payload.phase).set('activeRequest', false));
-  case PHASE_CHANGE_REJECT: return state.setIn(['gameState', 'activeRequest'], false);
+      .update('gameState', gameState => gameState.set('phase', action.payload.phase))
+                .update('phaseChanger', pc => pc.merge(phaseChanger));
+  case PHASE_CHANGE_REJECT: return state.setIn(['phaseChanger', 'activeRequest'], false);
   }
 
   return state;
