@@ -3,7 +3,7 @@ import { Route, IndexRoute }   from 'react-router';
 import App                     from 'components/index';
 import Join                    from 'components/join';
 import Game                    from 'components/game';
-import Progress                from 'components/Progress';
+import Progress                from 'components/progress.react.js';
 
 export default (
   <Route name="app" component={App} path="/">

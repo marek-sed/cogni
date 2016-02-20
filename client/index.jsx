@@ -14,6 +14,7 @@ import 'react-select/dist/react-select.css';
 import './reset.css';
 import './style.css';
 import './game.css';
+import './progress.css';
 
 const logger = createLogger();
 const reduxRouterMiddleware = syncHistory(browserHistory);
@@ -22,6 +23,7 @@ var createStoreWithMiddleware = applyMiddleware(
   reduxRouterMiddleware, logger, thunk)(createStore);
 const store   = createStoreWithMiddleware(reducer);
 
+console.log('reducers', reducers);
 render(
   <Provider store={store}>
     <Router children={routes} history={browserHistory} />

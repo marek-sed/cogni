@@ -1,4 +1,4 @@
-import {Map, List, Record, fromJS} from 'immutable';
+import {Map, List, Seq, Record, fromJS} from 'immutable';
 import {Observable} from 'rx';
 
 const PlayerRecord = Record({
@@ -20,7 +20,8 @@ const makeGame = () => Map({
   roles:         List(),
   Sender:        {},
   Receiver:      {},
-  EavesDropper:  {}
+  EavesDropper:  {},
+  timer:         {}
 })
 
 
@@ -147,7 +148,13 @@ const gameTimerSource = Observable.interval(500).timeInterval().pluck('interval'
 
 const turnTimerSource = Observable.interval(500).timeInterval().pluck('interval') .scan((acc, x) => acc - x, turnTime);
 
-const startGameTimer = (Sender, gameRoom) => gameTimerSource.takeWhile(x => x > 0).subscribe(time => {Sender.broadcast.to(gameRoom).emit('gameTime', time); Sender.emit('gameTime', time)});
+const startGameTimer = (Sender, gameRoom, gameId) => {
+  return gameTimerSource.takeWhile(x => x > 0).subscribe(time =>{
+    Sender.broadcast.to(gameRoom).emit('gameTime', time);
+    Sender.emit('gameTime', time);
+    games.setIn([gameId, 'remainingTime'], time);
+  });
+};
 
 function beginRound(gameId) {
   console.log('beginRound');
@@ -158,7 +165,7 @@ function beginRound(gameId) {
     const isStarted = games.getIn([gameId, 'isStarted']);
 
     if(!isStarted) {
-      startGameTimer(Sender, gameRoom);
+      startGameTimer(Sender, gameRoom, gameId);
       games = games.setIn([gameId, 'isStarted'], true);
     }
 
@@ -233,7 +240,7 @@ function getResultPhase2(expected, receiverPosition, eavesdropperPosition, gameS
 
   // not discovered reciever correct
   if (expected !== eavesdropperPosition && receiverPosition === expected) return {
-    message:   'DISCOVERED',
+    message:   'NOT DISCOVERED, receiver on correct position',
     score1:    gameScore.get('score1') + 10,
     score2:    gameScore.get('score2'),
     positions: [1, 1, 0]};
@@ -303,9 +310,10 @@ function endRound(gameId, result) {
   const ttsub = games.getIn([gameId, 'turnTimerSubscription']);
   if(ttsub !== 'disposed') ttsub.dispose();
   const endOfRoundSub = games.getIn([gameId, 'endOfRoundSubscription']);
-  if(endOfRoundSub !== 'disposed') endOfRoundSub.dispose();
+  if(endOfRoundSub && endOfRoundSub !== 'disposed') endOfRoundSub.dispose();
 
   recordResult(result);
+  emitProgress();
   Sender.emit('endRound', {phase, result});
   Receiver.emit('endRound', {phase, result});
   if (phase === 2) Eavesdropper.emit('endRound', {phase, result});
@@ -371,4 +379,25 @@ function recordResult(gameId, result) {
 
   console.log('result ')
   console.log('game', gameId, 'round', roundId, 'result', result );
+}
+
+let progress;
+export function connectProgress(socket) {
+  console.log('progress connected');
+  progress = socket;
+  emitProgress();
+}
+
+function emitProgress() {
+  const data = Seq(games).reduce((acc, x, key) => (
+    acc.push({
+    gameId: key,
+    round:  rounds.get(key).toList().size,
+    score1: x.getIn(['score', 'score1']),
+    score2: x.getIn(['score', 'score2']),
+    phase:  x.getIn(['phase']),
+    time:   x.get('remainingTime')
+    })), List([]));
+
+  progress.emit('updateProgress', data.toJS());
 }

@@ -1,0 +1,11 @@
+.progress table {
+  font-size: 2.2em;
+  border-collapse: collapse;
+}
+
+.progress table th,
+.progress table td {
+  border: 1px solid #999;
+  text-align: center;
+  padding: 0.5em;
+}
