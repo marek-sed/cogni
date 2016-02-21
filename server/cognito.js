@@ -1,16 +1,13 @@
 import {Map, List, Seq, Record, fromJS} from 'immutable';
 import {Observable} from 'rx';
-import shortid from 'shortid';
-import {insertGame, insertRound, insertPlayer, insertSession} from './db.js';
+import {insertGame, insertRound} from './db.js';
 
 const PlayerRecord = Record({
-  gameId:    0,
   firstName: '',
   surname:   ''
 });
 
 let games = Map();
-let players = Map();
 const initialScore = Map({score1: 0, score2: 0});
 
 const getRandomPosition = () => Math.floor(Math.random() * 8) + 1;
@@ -19,7 +16,6 @@ const getTokenState = () => ({signalPosition: getRandomPosition(),
                               tokenPosition:  4});
 
 const makeRound = (index, role) => fromJS({
-  _id:    shortid.generate(),
   index:  index,
   onTurn: role,
   token:  getTokenState(),
@@ -27,7 +23,6 @@ const makeRound = (index, role) => fromJS({
 });
 
 const makeGame = (gameName) => Map({
-  _id:           shortid.generate(),
   gameName:      gameName,
   isReady:       false,
   isStarted:     false,
@@ -35,9 +30,9 @@ const makeGame = (gameName) => Map({
   activeRequest: false,
   score:         initialScore,
   rounds:        List(),
-  Sender:        null,
-  Receiver:      null,
-  EavesDropper:  null,
+  Sender:        false,
+  Receiver:      false,
+  EavesDropper:  false,
   timer:         {}
 })
 
@@ -52,8 +47,9 @@ export function registerPlayer(gameName, role, firstName, surname) {
   }
 
   game = game.set(role, true);
+  game = game.setIn(['players', role], new PlayerRecord({firstName, surname}));
   games = games.set(gameName, game);
-  players = players.setIn([gameName, role], new PlayerRecord({firstName, surname}));
+  games = games.setIn([gameName, 'playes', role], new PlayerRecord({firstName, surname}));
 }
 
 const isGameReady = (gameName) => {
@@ -67,8 +63,9 @@ export function assignSocketTo(gameName, role, socket) {
   games = games.setIn([gameName, 'sockets', role], socket);
   registerEvents(socket, gameName, role);
   if(isGameReady(gameName)) {
-    recordPlayers(gameName);
     subscribeToGame(gameName, role);
+    const game = games.get(gameName);
+    recordGame(game);
     socket.emit('gameReady', true);
     socket.broadcast.to(gameName).emit('gameReady', true);
   }
@@ -137,21 +134,22 @@ function subscribeToGame(gameName) {
 }
 
 function subscribeToEndOfRoundPhase1(gameName, receiverSource) {
+  console.log('subscribeToEndOfRoundPhase1');
   games = games.setIn([gameName, 'endOfRoundSubscription'],
                       receiverSource.endTurn.subscribe(() => evaluateEndOfRound(gameName)));
 }
 
 function subscribeToEndOfRoundPhase2(gameName, eavesdropperSource, receiverSource) {
+  console.log('subscribeToEndOfRoundPhase2');
   games = games.setIn([gameName, 'endOfRoundSubscription'],
-                      eavesdropperSource.endTurn.zip(receiverSource.endTurn)
-                      .subscribe(() => evaluateEndOfRound(gameName)));
+                      eavesdropperSource.endTurn.zip(receiverSource.endTurn).subscribe(() => evaluateEndOfRound(gameName)));
 }
 
 const gameTime = 70 * 60 * 1000;
 const turnTime = 20 * 1000;
-const gameTimerSource = Observable.interval(500).timeInterval().pluck('interval') .scan((acc, x) => acc - x, gameTime);
+const gameTimerSource = Observable.interval(500).timeInterval().pluck('interval').scan((acc, x) => acc - x, gameTime);
 
-const turnTimerSource = Observable.interval(500).timeInterval().pluck('interval') .scan((acc, x) => acc - x, turnTime);
+const turnTimerSource = Observable.interval(500).timeInterval().pluck('interval').scan((acc, x) => acc - x, turnTime);
 
 const startGameTimer = (Sender, gameName) => {
   return gameTimerSource.takeWhile(x => x > 0).subscribe(time =>{
@@ -291,8 +289,7 @@ function evaluateEndOfRound(gameName) {
 function observersTurn(gameName) {
   console.log('observersTurn');
   const ttsub = games.getIn([gameName, 'turnTimerSubscription']);
-  console.log('is ttsub disposed', ttsub, ttsub.isDisposed);
-  if(ttsub !== 'disposed') ttsub.dispose();
+  ttsub.dispose();
   const {Sender, Receiver, Eavesdropper} = games.getIn([gameName, 'sockets']).toJS();
   const phase = games.getIn([gameName, 'phase']);
 
@@ -315,9 +312,7 @@ function endRound(gameName, result) {
   const {Sender, Receiver, Eavesdropper} = games.getIn([gameName, 'sockets']).toJS();
   const phase = games.getIn([gameName, 'phase']);
   const ttsub = games.getIn([gameName, 'turnTimerSubscription']);
-  if(ttsub !== 'disposed') ttsub.dispose();
-  const endOfRoundSub = games.getIn([gameName, 'endOfRoundSubscription']);
-  if(endOfRoundSub && endOfRoundSub !== 'disposed') endOfRoundSub.dispose();
+  ttsub.dispose();
 
   recordRound(gameName, result);
   emitProgress();
@@ -336,8 +331,6 @@ function moveTo(gameName, nextPosition, role, {SenderSocket, ReceiverSocket, Eav
 }
 
 function changePhaseRequest(gameName, {SenderSocket, ReceiverSocket, EavesdropperSocket}) {
-  const phase = games.getIn([gameName, 'phase']);
-  console.log('change phase request' , phase);
   if (SenderSocket) SenderSocket.emit('changePhase', true);
   if (ReceiverSocket) ReceiverSocket.emit('changePhase', true);
   if (EavesdropperSocket) EavesdropperSocket.emit('changePhase', false);
@@ -362,16 +355,10 @@ function changeEndOfRoundSource(gameName, nextPhase) {
   const sub = games.getIn([gameName, 'endOfRoundSubscription']);
   const ReceiverSource = games.getIn([gameName, 'sources', 'Receiver']);
   const EavesdropperSource = games.getIn([gameName, 'sources', 'Eavesdropper']);
-  if(sub && sub !== 'disposed') sub.dispose();
+  sub.dispose();
 
-  games = games.setIn([gameName, 'endOfRoundSubscription'],
-                      nextPhase === 2
-                      ? subscribeToEndOfRoundPhase2(gameName, EavesdropperSource, ReceiverSource)
-                      : subscribeToEndOfRoundPhase1(gameName, ReceiverSource))
-}
-
-function recordPlayers(gameName) {
-  console.log(gameName, players.get(gameName).toJS());
+  if (nextPhase === 2) subscribeToEndOfRoundPhase2(gameName, EavesdropperSource, ReceiverSource)
+  else subscribeToEndOfRoundPhase1(gameName, ReceiverSource);
 }
 
 function recordMovement(gameName, position, role) {
@@ -382,8 +369,6 @@ function recordMovement(gameName, position, role) {
                                                                moves => moves.push(fromJS({
                                                                  position: position,
                                                                  time:     time})))));
-
-  console.log('rounds', games.getIn([gameName, 'rounds', -1, 'moves']).toJS());
 }
 
 function recordRound(gameName, result) {
@@ -392,9 +377,18 @@ function recordRound(gameName, result) {
 
   const currentRound = games.getIn([gameName, 'rounds']).last();
   const phase = games.getIn([gameName, 'phase']);
+  const gameId = games.getIn([gameName, '_id']);
+  insertRound(gameId, currentRound, result, phase);
+  console.log('record round ', games.get(gameName));
+}
 
-  insertRound(currentRound, result, phase);
-  console.log('record round ');
+function recordGame(game) {
+  console.log('record game');
+  const gameName = game.get('gameName');
+  insertGame(game, (err, doc) => {
+    games = games.setIn([gameName, '_id'], doc._id);
+    console.log('record game', err);
+  });
 }
 
 let progress;
@@ -405,9 +399,9 @@ export function connectProgress(socket) {
 }
 
 function emitProgress() {
-  const data = Seq(games).reduce((acc, x, key) => (
+  const data = Seq(games).reduce((acc, x) => (
     acc.push({
-      gameName: key,
+      gameName: x.get('gameName'),
       round:    x.get('rounds').size,
       score1:   x.getIn(['score', 'score1']),
       score2:   x.getIn(['score', 'score2']),

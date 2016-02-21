@@ -1,7 +1,9 @@
 import driver from 'mongojs';
+import {Map} from 'immutable';
 
-// const db = driver('mongodb://<dbuser>:<dbpassword>@ds055915.mongolab.com:55915/cognito');
-const db = driver('mongodb://localhost/cognito', ['sessions', 'games', 'players']);
+const db = driver('mongodb://marek:marek@ds055915.mongolab.com:55915/cognito',
+                  ['sessions', 'games']);
+//const db = driver('mongodb://localhost/cognito', ['sessions', 'games', 'players']);
 
 db.on('error', (error) => {
   console.log('db error ', error)
@@ -12,68 +14,32 @@ db.on('connect', () => {
 })
 
 export function insertSession(session) {
-  
+
 }
 
 export function insertRound(gameId, round, result, phase) {
+  const document = round.delete('onTurn').merge(Map({result})).merge(Map({phase})).toJS();
+
+  db.games.update(
+    {_id: gameId},
+    { $push:
+      {rounds: document}},
+    () => console.log('record round result ')
+  )
+}
+
+export function insertGame(game, callback) {
   const document = {
-    
+    sessionId: 0,
+    gameName:  game.get('gameName'),
+    date:      new Date(),
+    score:     game.get('score').toJS(),
+    rounds:    [],
+    players:   game.get('players')
   }
+
+  let insertGameId;
+  db.games.save(document, callback);
+
+  return insertGameId;
 }
-
-export function createGame(game) {
-  
-}
-
-export function insertPlayer(player) {
-
-}
-
-// database types
-const Player = {
-  gameId:    Number,
-  firstName: String,
-  lastName:  String
-}
-
-const Move = {
-  position: Number,
-  time:     Number
-};
-
-const Score = {
-  score1: Number,
-  score2: Number,
-};
-
-const Token = {
-  signalPosition: Number,
-  endPosition:    Number
-}
-
-const Round = {
-  _id:               Number,
-  index:             Number,
-  senderMoves:       [Move],
-  receiverMoves:     [Move],
-  eavesdropperMoves: [Move],
-  tokenInfo:         Token,
-  phase:             Number,
-  result:            Result,
-};
-
-// each property can have value 0 - wrong position, 1 - correct signal position
-// eaves dropper has additional option 2 - same position as receiver
-const Result = {
-  sender:       Number,
-  receiver:     Number,
-  eavesdropper: Number
-}
-
-const Game = {
-  sessionId: Number,
-  gameId:    Number,
-  date:      Date,
-  score:     Score, // score of last round
-  rounds:    [Round]
-};

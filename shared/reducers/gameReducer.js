@@ -16,7 +16,7 @@ const token = fromJS({
 })
 
 const round = fromJS({
-  index:     0,
+  index:  0,
   onTurn: '',
   token:  token
 })
