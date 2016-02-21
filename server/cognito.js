@@ -1,6 +1,7 @@
 import {Map, List, Seq, Record, fromJS} from 'immutable';
 import {Observable} from 'rx';
-import shortid from 'shoritd';
+import shortid from 'shortid';
+import {insertGame, insertRound, insertPlayer, insertSession} from './db.js';
 
 const PlayerRecord = Record({
   gameId:    0,
@@ -21,7 +22,8 @@ const makeRound = (index, role) => fromJS({
   _id:    shortid.generate(),
   index:  index,
   onTurn: role,
-  token:  getTokenState()
+  token:  getTokenState(),
+  moves:  {}
 });
 
 const makeGame = (gameName) => Map({
@@ -210,26 +212,29 @@ function emitTurnTime(gameName, time) {
 function evaluateSenderPosition(gameName) {
   console.log('evaluteSenderPosition');
   const lastRound = games.getIn([gameName, 'rounds']).last();
-  const expectedEndPosition = lastRound.getIn(['token', 'tokenPosition']);
+  const expectedEndPosition = lastRound.getIn(['token', 'endPosition']);
   const senderMoves = lastRound.getIn(['moves', 'Sender']);
   const actualEndPosition = senderMoves.last().get('position');
   const gameScore = games.getIn([gameName, 'score']);
 
-  console.log('expected', expectedEndPosition, 'actual', actualEndPosition );
+  console.log('expected', expectedEndPosition, 'actual', actualEndPosition, gameName, gameScore );
   if (expectedEndPosition === actualEndPosition) observersTurn(gameName);
-  else endRound(gameName, {message: 'WRONG POSITION, sender on incorrect end position',
-                         score1:  gameScore.get('score1'),
-                         score2:  gameScore.get('score2')});
+  else endRound(gameName, {message:   'WRONG POSITION, sender on incorrect end position',
+                           score1:    gameScore.get('score1'),
+                           score2:    gameScore.get('score2'),
+                           positions: [0]});
 }
 
 function getResultPhase1(expected, receiverPosition, gameScore) {
-  if(expected === receiverPosition) return {message: 'SUCCESS, receiver on correct position',
-                                            score1:  gameScore.get('score1'),
-                                            score2:  gameScore.get('score2')};
+  if(expected === receiverPosition) return {message:   'SUCCESS, receiver on correct position',
+                                            score1:    gameScore.get('score1'),
+                                            score2:    gameScore.get('score2'),
+                                            positions: [1, 1]};
 
-  return {message: 'INCORRECT, receiver on incorrect position',
-          score1:  gameScore.get('score1'),
-          score2:  gameScore.get('score2')};
+  return {message:   'INCORRECT, receiver on incorrect position',
+          score1:    gameScore.get('score1'),
+          score2:    gameScore.get('score2'),
+          positions: [1, 0]};
 }
 
 function getResultPhase2(expected, receiverPosition, eavesdropperPosition, gameScore) {
@@ -306,7 +311,7 @@ function observersTurn(gameName) {
 }
 
 function endRound(gameName, result) {
-  console.log('endRound');
+  console.log('endRound', result);
   const {Sender, Receiver, Eavesdropper} = games.getIn([gameName, 'sockets']).toJS();
   const phase = games.getIn([gameName, 'phase']);
   const ttsub = games.getIn([gameName, 'turnTimerSubscription']);
@@ -314,7 +319,7 @@ function endRound(gameName, result) {
   const endOfRoundSub = games.getIn([gameName, 'endOfRoundSubscription']);
   if(endOfRoundSub && endOfRoundSub !== 'disposed') endOfRoundSub.dispose();
 
-  recordResult(result);
+  recordRound(gameName, result);
   emitProgress();
   Sender.emit('endRound', {phase, result});
   Receiver.emit('endRound', {phase, result});
@@ -332,30 +337,31 @@ function moveTo(gameName, nextPosition, role, {SenderSocket, ReceiverSocket, Eav
 
 function changePhaseRequest(gameName, {SenderSocket, ReceiverSocket, EavesdropperSocket}) {
   const phase = games.getIn([gameName, 'phase']);
-  console.log('change phase request');
+  console.log('change phase request' , phase);
   if (SenderSocket) SenderSocket.emit('changePhase', true);
   if (ReceiverSocket) ReceiverSocket.emit('changePhase', true);
-  if (EavesdropperSocket && phase === 2) EavesdropperSocket.emit('changePhase', false);
+  if (EavesdropperSocket) EavesdropperSocket.emit('changePhase', false);
 }
 
 function changePhaseResponse(gameName, {SenderSocket, ReceiverSocket, EavesdropperSocket}, response) {
   const phase = games.getIn([gameName, 'phase']);
-  const nextPhase = phase === 1 ? 2 : 1;
-  games = games.setIn([gameName, 'phase'], nextPhase);
+  let nextPhase = phase;
 
-  changeEndOfRoundSource(gameName, nextPhase, response);
+  if(response) {
+    nextPhase = phase === 1 ? 2 : 1;
+    games = games.setIn([gameName, 'phase'], nextPhase);
+    changeEndOfRoundSource(gameName, nextPhase);
+  }
 
   if(SenderSocket) SenderSocket.emit('changePhaseResponse', {response, phase: nextPhase});
   if(ReceiverSocket) ReceiverSocket.emit('changePhaseResponse', {response, phase: nextPhase});
   if(EavesdropperSocket) EavesdropperSocket.emit('changePhaseResponse', {response, phase: nextPhase});
 }
 
-function changeEndOfRoundSource(gameName, nextPhase, response) {
-  if(!response) return;
+function changeEndOfRoundSource(gameName, nextPhase) {
   const sub = games.getIn([gameName, 'endOfRoundSubscription']);
   const ReceiverSource = games.getIn([gameName, 'sources', 'Receiver']);
   const EavesdropperSource = games.getIn([gameName, 'sources', 'Eavesdropper']);
-  console.log(sub);
   if(sub && sub !== 'disposed') sub.dispose();
 
   games = games.setIn([gameName, 'endOfRoundSubscription'],
@@ -380,13 +386,15 @@ function recordMovement(gameName, position, role) {
   console.log('rounds', games.getIn([gameName, 'rounds', -1, 'moves']).toJS());
 }
 
-function recordResult(gameName, result) {
-  const roundId = games.getIn([gameName, 'currentRoundId']);
-
+function recordRound(gameName, result) {
   games = games.setIn([gameName, 'score', 'score1'], result.score1);
   games = games.setIn([gameName, 'score', 'score2'], result.score2);
-  console.log('record result ')
-  console.log('game', gameName, 'round', roundId, 'result', result );
+
+  const currentRound = games.getIn([gameName, 'rounds']).last();
+  const phase = games.getIn([gameName, 'phase']);
+
+  insertRound(currentRound, result, phase);
+  console.log('record round ');
 }
 
 let progress;
@@ -407,5 +415,5 @@ function emitProgress() {
       time:     x.get('remainingTime')
     })), List([]));
 
-  progress.emit('updateProgress', data.toJS());
+  if(progress) progress.emit('updateProgress', data.toJS());
 }

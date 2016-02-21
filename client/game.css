@@ -70,6 +70,10 @@
   display: flex;
   flex: 1;
   justify-content: flex-end;
+  font-size: 1.1em;
+  font-weight: 500;
+  opacity: 1;
+  transition: opacity 0.5s;
 }
 
 .game-panel .header .message {
@@ -97,6 +101,10 @@
   justify-content: space-between;
   flex: 1;
   margin-bottom: 5px;
+}
+
+.game-panel .button {
+  flex-basis: 166px;
 }
 
 .game-panel .board-panel {

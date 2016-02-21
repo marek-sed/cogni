@@ -11,20 +11,22 @@ db.on('connect', () => {
   console.log('db connected');
 })
 
-function insertSession(session) {
+export function insertSession(session) {
   
 }
 
-function insertRound(round) {
+export function insertRound(gameId, round, result, phase) {
+  const document = {
+    
+  }
+}
+
+export function createGame(game) {
   
 }
 
-function insertGame(game) {
-  
-}
+export function insertPlayer(player) {
 
-function insertPlayer(player) {
-  
 }
 
 // database types

@@ -1,16 +1,24 @@
 import React from 'react';
 
-const GameInfo = ({currentRound: {id}, gameState: { phase, score1, score2}}) => {
+const colorMap = {
+  '':           '#383830',
+  Sender:       '#f92672',
+  Receiver:     '#a6e22e' ,
+  Eavesdropper: '#f2971f'
+}
+
+const GameInfo = ({currentRound: {index}, player: {role}, gameState: { phase, score1, score2}}) => {
+  const color = colorMap[role];
 
   return (
     <div className="game-info">
       <div className="round">
-        {`Round ${id}`}
+        {`Round ${index}`}
       </div>
       <div className="score">
         {`Score ${score1} : ${score2}`}
       </div>
-      <div className="phase">
+      <div style={{color: color}} className="phase">
         <div>{`Phase ${phase}`}</div>
       </div>
     </div>

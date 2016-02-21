@@ -4,7 +4,6 @@ import path                      from 'path';
 import Server                    from 'socket.io';
 import bodyParser                from 'body-parser';
 import join                      from './server/api/join';
-import mongoose                  from 'mongoose';
 import {assignSocketTo, connectProgress}          from './server/cognito.js';
 
 const app = express();
@@ -41,19 +40,13 @@ app.use('/', (req, res) => {
 const httpServer = http.Server(app);
 const io = new Server(httpServer);
 
-/* mongoose.connect('mongodb://marek:cognito@ds055915.mongolab.com:55915/cognito'); */
-mongoose.connect('mongodb://localhost/cognito', () => {
-  console.log('connected to mongodb');
-});
-const db = mongoose.connection;
-
 io.on('connection', socket => {
   const {gameId, role} = socket.handshake.query;
   if(role === 'progress') {
     connectProgress(socket);
   }
   else {
-    assignSocketTo(gameId, role, socket, db);
+    assignSocketTo(gameId, role, socket);
   }
 });
 
