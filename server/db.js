@@ -13,8 +13,9 @@ db.on('connect', () => {
   console.log('db connected');
 })
 
-export function insertSession(session) {
-
+export function insertSession(session, callback) {
+  const document = session.toJS();
+  db.sessions.insert(document, callback);
 }
 
 export function insertRound(gameId, round, result, phase) {
@@ -28,9 +29,9 @@ export function insertRound(gameId, round, result, phase) {
   )
 }
 
-export function insertGame(game, callback) {
+export function insertGame(sessionId, game, callback) {
   const document = {
-    sessionId: 0,
+    sessionId: sessionId,
     gameName:  game.get('gameName'),
     date:      new Date(),
     score:     game.get('score').toJS(),
@@ -39,7 +40,7 @@ export function insertGame(game, callback) {
   }
 
   let insertGameId;
-  db.games.save(document, callback);
+  db.games.insert(document, callback);
 
   return insertGameId;
 }

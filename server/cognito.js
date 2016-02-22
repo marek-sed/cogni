@@ -1,10 +1,15 @@
 import {Map, List, Seq, Record, fromJS} from 'immutable';
 import {Observable} from 'rx';
-import {insertGame, insertRound} from './db.js';
+import {insertGame, insertRound, insertSession} from './db.js';
 
+console.log('cognito runs');
 const PlayerRecord = Record({
   firstName: '',
   surname:   ''
+});
+
+let currentSession = Map({
+  isActive: false
 });
 
 let games = Map();
@@ -39,6 +44,19 @@ const makeGame = (gameName) => Map({
 
 const getGame = (gameName) => games.has(gameName) ? games.get(gameName) : makeGame(gameName);
 
+export function createSession(session) {
+  currentSession = currentSession.merge(Map(session));
+  currentSession = currentSession.set('isActive', true);
+  insertSession(currentSession, (err, doc) => {
+    currentSession = currentSession.set('_id', doc._id);
+    console.log('insert session', err);
+  });
+}
+
+export function getSession() {
+  return currentSession.toJS();
+}
+
 export function registerPlayer(gameName, role, firstName, surname) {
   console.log('registering ', gameName, role);
   let game = getGame(gameName);
@@ -72,7 +90,16 @@ export function assignSocketTo(gameName, role, socket) {
 
 }
 
+function invalidateGame(gameName) {
+  const oldGame = games.get('gameName');
+  if(oldGame.get('isStarted')) {
+    updateGameEnd(oldGame);
+  }
+  games = games.setIn(['gameName'], makeGame(gameName));
+}
+
 function registerEvents(socket, gameName, role) {
+  Observable.fromEvent(socket, 'disconnected').subscribe(cancelGame);
   switch(role) {
   case 'Sender' : registerSenderEvents(socket, gameName, role); break;
   case 'Receiver' : registerReceiverEvents(socket, gameName, role); break;
@@ -145,8 +172,8 @@ function subscribeToEndOfRoundPhase2(gameName, eavesdropperSource, receiverSourc
                       eavesdropperSource.endTurn.zip(receiverSource.endTurn).subscribe(() => evaluateEndOfRound(gameName)));
 }
 
-const gameTime = 70 * 60 * 1000;
-const turnTime = 20 * 1000;
+const gameTime = currentSession.get('gameTime') * 60 * 1000;
+const turnTime = (currentSession.get('turnTime') + 0.5) * 1000;
 const gameTimerSource = Observable.interval(500).timeInterval().pluck('interval').scan((acc, x) => acc - x, gameTime);
 
 const turnTimerSource = Observable.interval(500).timeInterval().pluck('interval').scan((acc, x) => acc - x, turnTime);
@@ -238,27 +265,27 @@ function getResultPhase1(expected, receiverPosition, gameScore) {
 function getResultPhase2(expected, receiverPosition, eavesdropperPosition, gameScore) {
   if (expected === eavesdropperPosition && receiverPosition === expected) return {
     message:   'DISCOVERED, receiver and evasdropper on correct position',
-    score1:    gameScore.get('score1') - 100,
-    score2:    gameScore.get('score2') + 50,
+    score1:    gameScore.get('score1') - currentSession.get('score3'),
+    score2:    gameScore.get('score2') + currentSession.get('score2'),
     positions: [1, 1, 1]};
 
   if (expected === eavesdropperPosition && receiverPosition !== expected) return {
     message:   'DISCOVERED, receiver on wrong position',
-    score1:    gameScore.get('score1') - 100,
-    score2:    gameScore.get('score2') + 50,
+    score1:    gameScore.get('score1') - currentSession.get('score3'),
+    score2:    gameScore.get('score2') + currentSession.get('score2'),
     positions: [1, 0, 1]};
 
   // not discovered reciever correct
   if (expected !== eavesdropperPosition && receiverPosition === expected) return {
     message:   'NOT DISCOVERED, receiver on correct position',
-    score1:    gameScore.get('score1') + 10,
+    score1:    gameScore.get('score1') + currentSession.get('score1'),
     score2:    gameScore.get('score2'),
     positions: [1, 1, 0]};
 
   if (eavesdropperPosition === receiverPosition) return {
     message:   'NOT DISCOVERED, receiver and eavesdropper on same position',
     score1:    gameScore.get('score1'),
-    score2:    gameScore.get('score2') + 5,
+    score2:    gameScore.get('score2') + currentSession.get('score4'),
     positions: [1, 0, 2]}
 
   if (eavesdropperPosition !== receiverPosition) return {
@@ -385,7 +412,8 @@ function recordRound(gameName, result) {
 function recordGame(game) {
   console.log('record game');
   const gameName = game.get('gameName');
-  insertGame(game, (err, doc) => {
+  const sessionId = currentSession.get('_id');
+  insertGame(sessionId, game, (err, doc) => {
     games = games.setIn([gameName, '_id'], doc._id);
     console.log('record game', err);
   });

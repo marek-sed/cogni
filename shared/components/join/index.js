@@ -5,7 +5,6 @@ import InputRow from './inputRow.react.js';
 import SelectRow from './selectRow.react.js';
 import _ from 'lodash';
 
-const getGameOptions = count => _.range(1, count + 1).map(x => ({value: x, label: 'Game ' + x}));
 const roleOptions = [
   {value: '', label: ''},
   {value: 'Sender', label: 'Sender'},
@@ -14,7 +13,9 @@ const roleOptions = [
 ];
 
 
-const Join = ({dispatch, firstName, surname, game, role}) => {
+const getGameOptions = count => _.range(1, count + 1).map(x => ({value: x, label: 'Game ' + x}));
+const Join = ({numberOfGames, isActive, dispatch, firstName, surname, game, role}) => {
+  console.log('session info ', numberOfGames, isActive);
 
   const _update = key => evt => dispatch(update(key, evt.target.value));
   const validate = (firstName, surname, game, role) => (firstName || surname || game || role);
@@ -29,6 +30,10 @@ const Join = ({dispatch, firstName, surname, game, role}) => {
 
     dispatch(submit(firstName, surname, game, role));
     e.preventDefault();
+  }
+
+  if(!isActive) {
+    return <div>There is no active session</div>;
   }
 
   return (
@@ -46,7 +51,7 @@ const Join = ({dispatch, firstName, surname, game, role}) => {
           value={surname}
           onChange={_update('surname')} />
         <SelectRow id="game" value={game} label="Select game to join"
-          options={[{value: 0, label: ''}, ...getGameOptions(4)]}
+          options={[{value: 0, label: ''}, ...getGameOptions(numberOfGames)]}
           onChange={_update('game')}/>
         <SelectRow id="role" value={role} label="Select role to play"
           options={roleOptions}
@@ -58,4 +63,6 @@ const Join = ({dispatch, firstName, surname, game, role}) => {
 }
 
 
-export default connect(state => ({...state.formData.toJS()}))(Join)
+export default connect(state => ({...state.formData.toJS(),
+                                  gameCount: state.sessionInfo.numberOfGames,
+                                  isActive:  state.sessionInfo.isActive}))(Join);
