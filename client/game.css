@@ -103,10 +103,6 @@
   margin-bottom: 5px;
 }
 
-.game-panel .button {
-  flex-basis: 166px;
-}
-
 .game-panel .board-panel {
   display: flex;
   flex-direction: column;

@@ -36,11 +36,20 @@ export function insertGame(sessionId, game, callback) {
     date:      new Date(),
     score:     game.get('score').toJS(),
     rounds:    [],
-    players:   game.get('players')
+    players:   game.get('players').toJS()
   }
 
-  let insertGameId;
   db.games.insert(document, callback);
+}
 
-  return insertGameId;
+export function updateGameEnd(game, endReason) {
+  db.games.update(
+    { _id: game.get('_id') },
+    {
+      $set: {
+        endReasion: endReason,
+        score:      game.get('score').toJS()
+      }
+    }
+  )
 }

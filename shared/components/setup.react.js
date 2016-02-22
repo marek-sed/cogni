@@ -2,11 +2,15 @@ import React, {Component} from 'react';
 import {connect} from 'react-redux';
 import Slider from 'rc-slider';
 import {update, createSession} from '../actions/setupActions.js';
+import ActiveSession from './activeSession.react.js';
 
 class Setup extends Component {
 
   render() {
-    const {dispatch, name, numberOfGames, gameTime, turnTime, score1, score2, score3, score4} = this.props;
+    const {dispatch, isActive, name, numberOfGames, gameTime, turnTime, score1, score2, score3, score4} = this.props;
+    if(isActive) {
+      return <ActiveSession {...this.props} />
+    }
 
     const updateName = evt => dispatch(update('name', evt.target.value));
     const updateSlider = key => value => dispatch(update(key, Number(value)));

@@ -32,8 +32,8 @@ class Progress extends Component {
 
       return (
       <tr key={i} style={{backgroundColor: bgColor}}>
-        <td>{x.gameId}</td>
-        <td>{x.roundId}</td>
+        <td>{x.gameName}</td>
+        <td>{x.index}</td>
         <td>{x.phase}</td>
         <td>{x.score1}</td>
         <td>{x.score2}</td>

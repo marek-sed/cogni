@@ -1,6 +1,6 @@
 import {Map, List, Seq, Record, fromJS} from 'immutable';
 import {Observable} from 'rx';
-import {insertGame, insertRound, insertSession} from './db.js';
+import {insertGame, insertRound, insertSession, updateGameEnd} from './db.js';
 
 console.log('cognito runs');
 const PlayerRecord = Record({
@@ -13,6 +13,8 @@ let currentSession = Map({
 });
 
 let games = Map();
+let gameTimers = Map();
+let subscriptions = Map();
 const initialScore = Map({score1: 0, score2: 0});
 
 const getRandomPosition = () => Math.floor(Math.random() * 8) + 1;
@@ -41,7 +43,6 @@ const makeGame = (gameName) => Map({
   timer:         {}
 })
 
-
 const getGame = (gameName) => games.has(gameName) ? games.get(gameName) : makeGame(gameName);
 
 export function createSession(session) {
@@ -49,8 +50,11 @@ export function createSession(session) {
   currentSession = currentSession.set('isActive', true);
   insertSession(currentSession, (err, doc) => {
     currentSession = currentSession.set('_id', doc._id);
+    setupTimers(currentSession.get('gameTime'), currentSession.get('turnTime'));
     console.log('insert session', err);
   });
+
+  return currentSession.toJS();
 }
 
 export function getSession() {
@@ -90,16 +94,7 @@ export function assignSocketTo(gameName, role, socket) {
 
 }
 
-function invalidateGame(gameName) {
-  const oldGame = games.get('gameName');
-  if(oldGame.get('isStarted')) {
-    updateGameEnd(oldGame);
-  }
-  games = games.setIn(['gameName'], makeGame(gameName));
-}
-
 function registerEvents(socket, gameName, role) {
-  Observable.fromEvent(socket, 'disconnected').subscribe(cancelGame);
   switch(role) {
   case 'Sender' : registerSenderEvents(socket, gameName, role); break;
   case 'Receiver' : registerReceiverEvents(socket, gameName, role); break;
@@ -136,7 +131,6 @@ function registerEavesdropperEvents(socket, gameName, role) {
   games = games.setIn([gameName, 'sources', role], eavesdropperSources);
 }
 
-
 function subscribeToGame(gameName) {
   const SenderSource = games.getIn([gameName, 'sources', 'Sender']);
   const ReceiverSource = games.getIn([gameName, 'sources', 'Receiver']);
@@ -145,45 +139,60 @@ function subscribeToGame(gameName) {
   const SenderSocket = games.getIn([gameName, 'sockets', 'Sender']);
   const ReceiverSocket = games.getIn([gameName, 'sockets', 'Receiver']);
   const EavesdropperSocket = games.getIn([gameName, 'sockets', 'Eavesdropper']);
+  subscriptions = subscriptions.set(gameName,
+                                  List.of(
+                                    SenderSource.beginRound.subscribe(beginRound(gameName)),
+                                    SenderSource.move.subscribe(nextPosition => moveTo(gameName, nextPosition, 'Sender', {ReceiverSocket, EavesdropperSocket})),
+                                    SenderSource.endTurn.subscribe(() => evaluateSenderPosition(gameName)),
+                                    SenderSource.changePhaseRequest.subscribe(() => changePhaseRequest(gameName, {ReceiverSocket, EavesdropperSocket})),
+                                    SenderSource.changePhaseResponse.subscribe(response => changePhaseResponse(gameName, {ReceiverSocket, EavesdropperSocket}, response)),
 
-  SenderSource.beginRound.subscribe(beginRound(gameName));
-  SenderSource.move.subscribe(nextPosition => moveTo(gameName, nextPosition, 'Sender', {ReceiverSocket, EavesdropperSocket}));
-  SenderSource.endTurn.subscribe(() => evaluateSenderPosition(gameName));
-  SenderSource.changePhaseRequest.subscribe(() => changePhaseRequest(gameName, {ReceiverSocket, EavesdropperSocket}));
-  SenderSource.changePhaseResponse.subscribe(response => changePhaseResponse(gameName, {ReceiverSocket, EavesdropperSocket}, response));
+                                    ReceiverSource.move.subscribe(nextPosition => moveTo(gameName, nextPosition, 'Receiver', {SenderSocket})),
+                                    ReceiverSource.changePhaseRequest.subscribe(() => changePhaseRequest(gameName, {SenderSocket, EavesdropperSocket})),
+                                    ReceiverSource.changePhaseResponse.subscribe(response => changePhaseResponse(gameName, {SenderSocket, EavesdropperSocket}, response)),
 
-  ReceiverSource.move.subscribe(nextPosition => moveTo(gameName, nextPosition, 'Receiver', {SenderSocket}))
-  subscribeToEndOfRoundPhase1(gameName, ReceiverSource);
-  ReceiverSource.changePhaseRequest.subscribe(() => changePhaseRequest(gameName, {SenderSocket, EavesdropperSocket}));
-  ReceiverSource.changePhaseResponse.subscribe(response => changePhaseResponse(gameName, {SenderSocket, EavesdropperSocket}, response));
-
-  EavesdropperSource.move.subscribe(nextPosition => recordMovement(gameName, nextPosition, 'Eavesdropper'));
+                                    EavesdropperSource.move.subscribe(nextPosition => recordMovement(gameName, nextPosition, 'Eavesdropper'))
+                                  ));
+    subscribeToEndOfRoundPhase1(gameName, ReceiverSource);
 }
 
 function subscribeToEndOfRoundPhase1(gameName, receiverSource) {
   console.log('subscribeToEndOfRoundPhase1');
-  games = games.setIn([gameName, 'endOfRoundSubscription'],
-                      receiverSource.endTurn.subscribe(() => evaluateEndOfRound(gameName)));
+  const sub = receiverSource.endTurn.subscribe(() => evaluateEndOfRound(gameName));
+  subscriptions = subscriptions.update(gameName, subs => subs.push(sub));
+  games = games.setIn([gameName, 'endOfRoundSubscription'], sub);
 }
 
 function subscribeToEndOfRoundPhase2(gameName, eavesdropperSource, receiverSource) {
   console.log('subscribeToEndOfRoundPhase2');
-  games = games.setIn([gameName, 'endOfRoundSubscription'],
-                      eavesdropperSource.endTurn.zip(receiverSource.endTurn).subscribe(() => evaluateEndOfRound(gameName)));
+  const sub = eavesdropperSource.endTurn.zip(receiverSource.endTurn).subscribe(() => evaluateEndOfRound(gameName));
+  subscriptions = subscriptions.update(gameName, subs => subs.push(sub));
+  games = games.setIn([gameName, 'endOfRoundSubscription'], sub);
 }
 
-const gameTime = currentSession.get('gameTime') * 60 * 1000;
-const turnTime = (currentSession.get('turnTime') + 0.5) * 1000;
-const gameTimerSource = Observable.interval(500).timeInterval().pluck('interval').scan((acc, x) => acc - x, gameTime);
+let gameTimerSource;
+let turnTimerSource;
 
-const turnTimerSource = Observable.interval(500).timeInterval().pluck('interval').scan((acc, x) => acc - x, turnTime);
+function setupTimers(gameTime, turnTime) {
+  const gt = gameTime * 60 * 1000;
+  const tt = (turnTime + 0.5) * 1000;
+  gameTimerSource = Observable.interval(500).timeInterval().pluck('interval').scan((acc, x) => acc - x, gt);
+  turnTimerSource = Observable.interval(500).timeInterval().pluck('interval').scan((acc, x) => acc - x, tt);
+}
 
 const startGameTimer = (Sender, gameName) => {
-  return gameTimerSource.takeWhile(x => x > 0).subscribe(time =>{
+  return gameTimerSource.takeWhile(x => x > 0)
+    .subscribe(time => {
     Sender.broadcast.to(gameName).emit('gameTime', time);
     Sender.emit('gameTime', time);
     games.setIn([gameName, 'remainingTime'], time);
-  });
+    }, () => {},
+    () => endGame(gameName));
+};
+
+const startGame = (Sender, gameName) => {
+  gameTimers = gameTimers.set(gameName, startGameTimer(Sender, gameName));
+  games = games.setIn([gameName, 'isStarted'], true);
 };
 
 function beginRound(gameName) {
@@ -193,10 +202,7 @@ function beginRound(gameName) {
     const phase = games.getIn([gameName, 'phase']);
     const isStarted = games.getIn([gameName, 'isStarted']);
 
-    if(!isStarted) {
-      startGameTimer(Sender, gameName);
-      games = games.setIn([gameName, 'isStarted'], true);
-    }
+    if(!isStarted) startGame(Sender, gameName);
 
     const rounds = games.getIn([gameName, 'rounds']);
     const roundIndex = rounds.size;
@@ -213,16 +219,14 @@ function beginRound(gameName) {
     Sender.emit('round', round);
     Receiver.emit('round', round);
 
-    if(phase === 2) {
-      Eavesdropper.emit('round', round);
-    }
+    if(phase === 2) Eavesdropper.emit('round', round);
 
     games = games.setIn([gameName, 'turnTimerSubscription'], turnTimerSource.takeWhile(x => x > 0).subscribe(
       x => emitTurnTime(gameName, x),
       () => {},
       () => evaluateSenderPosition(gameName)
     ));
-  }
+  };
 }
 
 function emitTurnTime(gameName, time) {
@@ -286,13 +290,15 @@ function getResultPhase2(expected, receiverPosition, eavesdropperPosition, gameS
     message:   'NOT DISCOVERED, receiver and eavesdropper on same position',
     score1:    gameScore.get('score1'),
     score2:    gameScore.get('score2') + currentSession.get('score4'),
-    positions: [1, 0, 2]}
+    positions: [1, 0, 2]
+  };
 
   if (eavesdropperPosition !== receiverPosition) return {
     message:   'NOT DISCOVERED, receiver and eavesdropper on differnt position',
     score1:    gameScore.get('score1'),
     score2:    gameScore.get('score2'),
-    positions: [1, 0, 0]}
+    positions: [1, 0, 0]
+  };
 }
 
 function evaluateEndOfRound(gameName) {
@@ -331,7 +337,7 @@ function observersTurn(gameName) {
                       turnTimerSource.takeWhile(x => x > 0).subscribe(
                         x => emitTurnTime(gameName, x),
                         () => {},
-                        () => evaluateEndOfRound(gameName)))
+                        () => evaluateEndOfRound(gameName)));
 }
 
 function endRound(gameName, result) {
@@ -346,6 +352,24 @@ function endRound(gameName, result) {
   Sender.emit('endRound', {phase, result});
   Receiver.emit('endRound', {phase, result});
   if (phase === 2) Eavesdropper.emit('endRound', {phase, result});
+}
+
+function endGame(gameName) {
+  const sub = gameTimers.get(gameName);
+  if(!sub.m.isDisposed) sub();
+
+  cleanSubscriptions(gameName);
+  updateGameEnd(games.get(gameName));
+}
+
+function cleanSubscriptions(gameName) {
+  const gameSubs = subscriptions.get(gameName);
+  gameSubs.forEach(sub => sub());
+}
+
+export function endSession() {
+  const names = games.map(game => game.get('gameName'));
+  names.forEach(endGame);
 }
 
 function moveTo(gameName, nextPosition, role, {SenderSocket, ReceiverSocket, EavesdropperSocket}) {

@@ -1,4 +1,4 @@
-import {UPDATE_SETUP} from './actionTypes.js';
+import {UPDATE_SETUP, UPDATE_SETUP_SUCCESS} from './actionTypes.js';
 
 export function update(key, value) {
   return {
@@ -30,6 +30,26 @@ function handleResponse(response) {
 export function createSession(session) {
   return dispatch => postSession(session)
     .then(handleResponse)
-    .then(() => alert('session created'))
-    .catch(() => alert('failed to create a session'));
+    .then(res => dispatch(success(res)))
+    .catch(() => dispatch(failed()));
 }
+
+export function endSession(_id) {
+  return dispatch => endSessionPost(_id)
+    .then(handleResponse)
+    .then(res => dispatch(success))
+}
+
+export function success(session) {
+  return {
+    type:    UPDATE_SETUP_SUCCESS,
+    payload: {
+      session: session
+    }
+  }
+}
+
+export function failed() {
+  alert('failed something went wrong');
+}
+

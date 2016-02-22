@@ -64,5 +64,5 @@ const Join = ({numberOfGames, isActive, dispatch, firstName, surname, game, role
 
 
 export default connect(state => ({...state.formData.toJS(),
-                                  gameCount: state.sessionInfo.numberOfGames,
+                                  numberOfGames: state.sessionInfo.numberOfGames,
                                   isActive:  state.sessionInfo.isActive}))(Join);

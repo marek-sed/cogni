@@ -5,7 +5,7 @@ import Server                    from 'socket.io';
 import bodyParser                from 'body-parser';
 import join                      from './server/api/join';
 import createSession             from './server/api/createSession.js';
-import {assignSocketTo, connectProgress, getSession}          from './server/cognito.js';
+import {assignSocketTo, connectProgress, getSession, endSession}          from './server/cognito.js';
 
 const app = express();
 
@@ -18,11 +18,9 @@ app.use(express.static(path.join(__dirname, 'dist')));
 app.use(bodyParser.json());
 
 app.post('/join', join);
-const getCurrentSession = () => getSession();
-app.post('/createSession', createSession)
+app.post('/createSession', createSession);
+app.post('/endSession', endSession);
   app.use('/', (req, res) => {
-    const session = getCurrentSession();
-    console.log('responding with ', session)
     const HTML = `
       <!DOCTYPE html>
       <html>
