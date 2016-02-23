@@ -10,7 +10,6 @@ import thunk                from 'redux-thunk';
 import { createStore,
          combineReducers,
          applyMiddleware }  from 'redux';
-import 'react-select/dist/react-select.css';
 import './reset.css';
 import './style.css';
 import './game.css';

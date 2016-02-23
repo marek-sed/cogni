@@ -30,7 +30,7 @@ const Join = ({numberOfGames, isActive, dispatch, firstName, surname, game, role
 
     dispatch(submit(firstName, surname, game, role));
     e.preventDefault();
-  }
+  };
 
   if(!isActive) {
     return <div>There is no active session</div>;
