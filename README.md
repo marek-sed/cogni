@@ -8,7 +8,7 @@ $ npm run dev
 $ browser http://localhost:3000
 ```
 
-Game is described in ttcg.pdf file. File is work in progress and is not yet fully translated to english.
+Game is described in ttcg.pdf file in root directory. File is work in progress and is not yet fully translated to english.
 
 Flow of the experiment session is:
 - /setup - create a new testing session
