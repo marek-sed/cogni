@@ -19,6 +19,7 @@ Flow of the experiment session is:
 game ends when the timer ends or is terminated from /setup page
 
 ##TODO
+- merge shared and client folder
 - refactor to use redux store on server, fe should just fire actions
 - remove rest api and use only sockets
 - add tests
