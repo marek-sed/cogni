@@ -1,7 +1,7 @@
 import React from 'react';
 import {changePhase} from '../../../actions/gameActions.js';
 
-const LeftButton = ({dispatch, socket, currentRound: {index, onTurn}, gameState: {phase}, player: {role}}) => {
+const LeftButton = ({dispatch, socket, roundInProgress, currentRound: {index, onTurn}, gameState: {phase}, player: {role}}) => {
   if(role === 'Eavesdropper') {
     return <span></span>;
   }

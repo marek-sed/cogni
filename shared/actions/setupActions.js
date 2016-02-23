@@ -16,6 +16,14 @@ function postSession(session) {
   })
 }
 
+function endSessionPost() {
+  return fetch('/endSession', {
+    method:      'POST',
+    headers:     {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+  })
+}
+
 function handleResponse(response) {
   console.log('response', response);
   if (response.ok) {
@@ -30,14 +38,19 @@ function handleResponse(response) {
 export function createSession(session) {
   return dispatch => postSession(session)
     .then(handleResponse)
+    .then(res => res.json())
     .then(res => dispatch(success(res)))
     .catch(() => dispatch(failed()));
 }
 
 export function endSession(_id) {
-  return dispatch => endSessionPost(_id)
+  return dispatch => {
+    dispatch({type: 'END SESSION'});
+    endSessionPost(_id)
     .then(handleResponse)
-    .then(res => dispatch(success))
+    .then(() => alert('session ended'))
+    .catch(() => alert('failed to end session'));
+  }
 }
 
 export function success(session) {

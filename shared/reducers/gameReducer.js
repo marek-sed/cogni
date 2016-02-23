@@ -33,16 +33,17 @@ const phaseChanger = fromJS({
 })
 
 const initialState = fromJS({
-  gameId:       1,
-  gameTime:     70 * 60 * 1000,
-  roundTime:    20 * 1000,
-  isStarted:    false,
-  isReady:      false,
-  gameState:    gameState,
-  player:       player,
-  currentRound: round,
-  message:      '',
-  phaseChanger: phaseChanger
+  gameId:          1,
+  gameTime:        70 * 60 * 1000,
+  roundTime:       20 * 1000,
+  isStarted:       false,
+  isReady:         false,
+  gameState:       gameState,
+  player:          player,
+  roundInProgress: false,
+  currentRound:    round,
+  message:         '',
+  phaseChanger:    phaseChanger
 })
 
 export default function reducer(state = initialState, action = {}) {
@@ -55,7 +56,8 @@ export default function reducer(state = initialState, action = {}) {
   case MOVE: return state.setIn(['currentRound', 'token', 'tokenPosition'], action.payload.nextPosition);
   case UPDATE_GAME: return state.set(action.payload.key, action.payload.value);
   case BEGIN_ROUND: return state.set('isStarted', true);
-  case BEGIN_ROUND_CONTINUE: return state.set('currentRound', fromJS(action.payload.round));
+  case BEGIN_ROUND_CONTINUE: return state.set('currentRound', fromJS(action.payload.round))
+      .set('roundInProgress', true);
   case OBSERVERS_TURN: return state.setIn(['currentRound', 'onTurn'], action.payload.role)
       .setIn(['currentRound', 'token', 'tokenPosition'], 4).setIn(['currentRound', 'token', 'senderEndPosition'], action.payload.senderEndPosition);
   case END_TURN: return state.setIn(['currentRound', 'onTurn'], '');
@@ -63,7 +65,8 @@ export default function reducer(state = initialState, action = {}) {
       .update('gameState',gameState => gameState.merge(Map({phase:  action.payload.phase,
                                                             score1: action.payload.result.score1,
                                                             score2: action.payload.result.score2})))
-      .set('message', action.payload.result.message);
+      .set('message', action.payload.result.message)
+      .set('roundInProgress', true);
   case PHASE_CHANGE: return state.setIn(['phaseChanger', 'activeRequest'], true)
       .setIn(['phaseChanger', 'actionRequired'], action.payload.actionRequired);
   case PHASE_CHANGE_CONFIRM: return state

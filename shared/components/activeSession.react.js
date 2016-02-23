@@ -23,4 +23,4 @@ class ActiveSession extends Component {
   }
 }
 
-export default connect(state => ({...state.setup.toJS()}))(ActiveSession);
+export default ActiveSession;

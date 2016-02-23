@@ -183,11 +183,12 @@ function setupTimers(gameTime, turnTime) {
 const startGameTimer = (Sender, gameName) => {
   return gameTimerSource.takeWhile(x => x > 0)
     .subscribe(time => {
-    Sender.broadcast.to(gameName).emit('gameTime', time);
-    Sender.emit('gameTime', time);
-    games.setIn([gameName, 'remainingTime'], time);
-    }, () => {},
-    () => endGame(gameName));
+      Sender.broadcast.to(gameName).emit('gameTime', time);
+      Sender.emit('gameTime', time);
+      games.setIn([gameName, 'remainingTime'], time);
+    },
+               () => {},
+               () => endGame(gameName));
 };
 
 const startGame = (Sender, gameName) => {
@@ -354,22 +355,31 @@ function endRound(gameName, result) {
   if (phase === 2) Eavesdropper.emit('endRound', {phase, result});
 }
 
-function endGame(gameName) {
+function endGame(gameName, endReason = 'finished') {
   const sub = gameTimers.get(gameName);
-  if(!sub.m.isDisposed) sub();
+  console.log('sub', sub);
+  if(!sub.m.isDisposed) sub.dispose();
 
   cleanSubscriptions(gameName);
-  updateGameEnd(games.get(gameName));
+  updateGameEnd(games.get(gameName), endReason);
+  games = games.delete(gameName);
+  if(games.isEmpty()) {
+    currentSession = Map({isActive: false});
+  }
 }
 
 function cleanSubscriptions(gameName) {
   const gameSubs = subscriptions.get(gameName);
-  gameSubs.forEach(sub => sub());
+  gameSubs.forEach(sub => sub.dispose());
 }
 
 export function endSession() {
-  const names = games.map(game => game.get('gameName'));
-  names.forEach(endGame);
+  const names = games.toList().flatMap(game => game.get('gameName'));
+  console.log(names);
+  console.log(gameTimers);
+  names.forEach(x => endGame(x, 'terminated'));
+  games = Map();
+  gameTimers = Map();
 }
 
 function moveTo(gameName, nextPosition, role, {SenderSocket, ReceiverSocket, EavesdropperSocket}) {
@@ -430,7 +440,6 @@ function recordRound(gameName, result) {
   const phase = games.getIn([gameName, 'phase']);
   const gameId = games.getIn([gameName, '_id']);
   insertRound(gameId, currentRound, result, phase);
-  console.log('record round ', games.get(gameName));
 }
 
 function recordGame(game) {
