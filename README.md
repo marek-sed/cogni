@@ -10,7 +10,7 @@ $ browser http://localhost:3000
 
 Game is described in ttcg.pdf file. File is work in progress and is not yet fully translated to english.
 
-Flow of the testing session is:
+Flow of the experiment session is:
 - /setup - create a new testing session
 - / - join game, all 3 roles needs to join for game to be ready
 - /game - play the game, use arrows to move the token on grid
@@ -25,4 +25,5 @@ game ends when the timer ends or is terminated from /setup page
 - implement reconnect functionality for players
 - error handling
 - change styling to more subtle colors
+- refactor modals
 - finish this markdown
