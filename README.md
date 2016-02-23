@@ -1,6 +1,6 @@
 ## Game for cognitive science research
 
-Build on Express, Socket.io, React, Rxjs and [Redux](https://github.com/gaearon/redux)
+Build on Express, Socket.io, React, Rx, [Redux](https://github.com/gaearon/redux), Mongodb
 
 ```
 $ npm intall
