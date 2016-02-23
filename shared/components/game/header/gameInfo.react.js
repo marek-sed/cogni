@@ -9,7 +9,7 @@ const colorMap = {
 
 const GameInfo = ({currentRound: {index}, player: {role}, gameState: { phase, score1, score2}}) => {
   const color = colorMap[role];
-
+  const style = phase === 2 ? ({color: color}) : ({});
   return (
     <div className="game-info">
       <div className="round">
@@ -18,7 +18,7 @@ const GameInfo = ({currentRound: {index}, player: {role}, gameState: { phase, sc
       <div className="score">
         {`Score ${score1} : ${score2}`}
       </div>
-      <div style={{color: color}} className="phase">
+      <div style={style} className="phase">
         <div>{`Phase ${phase}`}</div>
       </div>
     </div>
