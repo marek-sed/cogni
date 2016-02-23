@@ -66,7 +66,7 @@ export default function reducer(state = initialState, action = {}) {
                                                             score1: action.payload.result.score1,
                                                             score2: action.payload.result.score2})))
       .set('message', action.payload.result.message)
-      .set('roundInProgress', true);
+      .set('roundInProgress', false);
   case PHASE_CHANGE: return state.setIn(['phaseChanger', 'activeRequest'], true)
       .setIn(['phaseChanger', 'actionRequired'], action.payload.actionRequired);
   case PHASE_CHANGE_CONFIRM: return state
