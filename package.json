@@ -12,7 +12,6 @@
   "author": "Marek Sedlacek",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.8.1",
     "babel": "^6.3.13",
     "babel-core": "^6.3.21",
     "babel-loader": "^6.2.0",
@@ -42,18 +41,17 @@
     "redux-logger": "^2.5.2",
     "redux-thunk": "^1.0.3",
     "rx": "^4.0.7",
-    "shortid": "^2.2.4",
     "socket.io": "^1.4.5",
     "socket.io-client": "^1.4.5",
-    "webpack": "^1.12.9"
+    "css-loader": "^0.23.1",
+    "style-loader": "^0.13.0"
   },
   "devDependencies": {
     "babel-eslint": "^5.0.0-beta6",
-    "css-loader": "^0.23.1",
     "eslint": "^1.10.3",
     "eslint-plugin-react": "^3.12.0",
     "react-transform-hmr": "^1.0.1",
-    "style-loader": "^0.13.0",
+    "webpack": "^1.12.9",
     "webpack-dev-middleware": "^1.4.0",
     "webpack-hot-middleware": "^2.6.0"
   }
