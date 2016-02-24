@@ -1,4 +1,4 @@
-import {fromJS, Map} from 'immutable';
+import {fromJS, Map, List} from 'immutable';
 import {MOVE, INIT, UPDATE_GAME, BEGIN_ROUND, BEGIN_ROUND_CONTINUE,
         OBSERVERS_TURN, END_TURN, END_ROUND,
         PHASE_CHANGE, PHASE_CHANGE_REJECT, PHASE_CHANGE_CONFIRM} from '../actions/actionTypes.js';
@@ -43,7 +43,10 @@ const initialState = fromJS({
   roundInProgress: false,
   currentRound:    round,
   message:         '',
-  phaseChanger:    phaseChanger
+  phaseChanger:    phaseChanger,
+  progress:        List.of({gameName: 1, score1: 10, score2: -20},
+                           {gameName: 2, score1: -10, score2: 20},
+                           {gameName: 3, score1: 20, score2: 10})
 })
 
 export default function reducer(state = initialState, action = {}) {
@@ -62,9 +65,10 @@ export default function reducer(state = initialState, action = {}) {
       .setIn(['currentRound', 'token', 'tokenPosition'], 4).setIn(['currentRound', 'token', 'senderEndPosition'], action.payload.senderEndPosition);
   case END_TURN: return state.setIn(['currentRound', 'onTurn'], '');
   case END_ROUND: return state.setIn(['currentRound', 'onTurn'], '')
-      .update('gameState',gameState => gameState.merge(Map({phase:  action.payload.phase,
+      .update('gameState', gameState => gameState.merge(Map({phase:  action.payload.phase,
                                                             score1: action.payload.result.score1,
-                                                            score2: action.payload.result.score2})))
+                                                             score2: action.payload.result.score2})))
+      .update('progress', progress => progress.merge(fromJS(action.payload.progress)))
       .set('message', action.payload.result.message)
       .set('roundInProgress', false);
   case PHASE_CHANGE: return state.setIn(['phaseChanger', 'activeRequest'], true)

@@ -16,7 +16,7 @@
 .game-panel {
   position: relative;
   display:flex;
-  margin: 20px 0;
+  margin: 0px auto 0 auto;
   align-self: center;
   flex-direction: column;
   padding: 20px;
@@ -177,4 +177,23 @@
 
 .game-panel .board-panel .board .tile .end {
   text-align: right;
+}
+
+.progress-table {
+  margin: 5px;
+}
+
+.progress-table td,
+.progress-table th {
+  text-align: center;
+  font-size: 0.8em;
+  color: #777;
+  padding: 3px;
+  border-bottom: 1px solid #ccc;
+  border-left: 1px solid #ccc;
+}
+
+.progress-table td:first-child,
+.progress-table th:first-child {
+  border-left: 0px solid #ccc;
 }

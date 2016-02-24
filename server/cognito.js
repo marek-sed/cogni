@@ -349,10 +349,11 @@ function endRound(gameName, result) {
   ttsub.dispose();
 
   recordRound(gameName, result);
-  emitProgress();
-  Sender.emit('endRound', {phase, result});
-  Receiver.emit('endRound', {phase, result});
-  if (phase === 2) Eavesdropper.emit('endRound', {phase, result});
+  const progress = getProgress();
+  emitProgress(progress);
+  Sender.emit('endRound', {phase, result, progress});
+  Receiver.emit('endRound', {phase, result, progress});
+  if (phase === 2) Eavesdropper.emit('endRound', {phase, result, progress});
 }
 
 function endGame(gameName, endReason = 'finished') {
@@ -456,11 +457,11 @@ let progress;
 export function connectProgress(socket) {
   console.log('progress connected');
   progress = socket;
-  emitProgress();
+  emitProgress(getProgress());
 }
 
-function emitProgress() {
-  const data = Seq(games).reduce((acc, x) => (
+function getProgress() {
+  return Seq(games).reduce((acc, x) => (
     acc.push({
       gameName: x.get('gameName'),
       round:    x.get('rounds').size,
@@ -469,6 +470,8 @@ function emitProgress() {
       phase:    x.getIn(['phase']),
       time:     x.get('remainingTime')
     })), List([]));
+}
 
+function emitProgress(data) {
   if(progress) progress.emit('updateProgress', data.toJS());
 }

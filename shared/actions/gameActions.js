@@ -60,13 +60,14 @@ export function endTurn(socket) {
   }
 }
 
-export function endRound({phase, result}) {
+export function endRound({phase, result, progress}) {
 
   return {
     type:    END_ROUND,
     payload: {
-      phase:  phase,
-      result: result
+      phase:    phase,
+      result:   result,
+      progress: progress
     }
   }
 }
