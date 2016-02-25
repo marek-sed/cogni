@@ -44,7 +44,9 @@ const initialState = fromJS({
   currentRound:    round,
   message:         '',
   phaseChanger:    phaseChanger,
-  progress:        List.of()
+  progress:        List.of({gameName: 1, score1: 10, score2: -20},
+                           {gameName: 2, score1: -10, score2: 20},
+                           {gameName: 3, score1: 20, score2: 10})
 })
 
 export default function reducer(state = initialState, action = {}) {
