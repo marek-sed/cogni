@@ -77,4 +77,4 @@ class Setup extends Component {
   }
 }
 
-export default connect(state => ({...state.setup.toJS()}))(Setup);
+export default connect(state => ({...state.setup.toJS(), isActive: state.sessionInfo.isActive}))(Setup);
