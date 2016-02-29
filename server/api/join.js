@@ -5,7 +5,7 @@ export default function(req, res) {
   console.log('joining game ', game);
   const error = registerPlayer(game, role, firstName, surname);
   if(error) {
-    res.status(400).send(error).end();
+    res.status(400).send({error: error}).end();
   }
 
   res.status(200).end();

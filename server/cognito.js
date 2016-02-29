@@ -69,9 +69,10 @@ export function registerPlayer(gameName, role, firstName, surname) {
   }
 
   game = game.set(role, true);
-  game = game.setIn(['players', role], new PlayerRecord({firstName, surname}));
   games = games.set(gameName, game);
-  games = games.setIn([gameName, 'playes', role], new PlayerRecord({firstName, surname}));
+  games = games.setIn([gameName, 'players', role], new PlayerRecord({firstName, surname}));
+
+  emitProgress(List([]), getJoiningProgress());
 }
 
 const isGameReady = (gameName) => {
@@ -463,11 +464,20 @@ function recordGame(game) {
   });
 }
 
-let progress;
+let progressSocket;
 export function connectProgress(socket) {
   console.log('progress connected');
-  progress = socket;
-  emitProgress(getProgress());
+  progressSocket = socket;
+  emitProgress(getProgress(), getJoiningProgress());
+}
+
+function getJoiningProgress() {
+  return Seq(games).reduce((acc, x) => {
+    acc.push({
+      gameName: x.get('gameName'),
+      players:  x.get('players').toJS()
+    })
+  }, List([]))
 }
 
 function getProgress() {
@@ -482,6 +492,9 @@ function getProgress() {
     })), List([]));
 }
 
-function emitProgress(data) {
-  if(progress) progress.emit('updateProgress', data.toJS());
+function emitProgress(progress = List([]), joining = List([])) {
+  if(progressSocket) progressSocket.emit('updateProgress', {
+    progress: progress.toJS(),
+    joining:  joining.toJS()
+  });
 }

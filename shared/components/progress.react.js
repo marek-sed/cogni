@@ -20,13 +20,13 @@ class Progress extends Component {
   }
 
   render() {
-    const {data} = this.props;
-    console.log(data);
+    const {progress} = this.props;
+    console.log(progress);
 
-    const max1 = data.length > 0 && _.maxBy(data, o => o.score1).score1;
-    const max2 = data.length > 0 && _.maxBy(data, o => o.score2).score2;
+    const max1 = progress.length > 0 && _.maxBy(progress, o => o.score1).score1;
+    const max2 = progress.length > 0 && _.maxBy(progress, o => o.score2).score2;
 
-    const renderLines = data.map((x, i) => {
+    const renderLines = progress.map((x, i) => {
       const bgColor = x.score1 === max1 ? '#f92672'
               : x.score2 === max2 ? '#fd971f' : 'white';
 
@@ -43,6 +43,7 @@ class Progress extends Component {
 
     return (
       <div className="progress">
+        {this.props.joining}
         <table>
           <thead>
             <tr>

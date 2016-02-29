@@ -21,22 +21,16 @@ function join(firstName, surname, game, role) {
 }
 
 function showError(error) {
-  if (error.reponse) {
-    error.response.text().then(alert);
-  }
-  else {
     alert(error);
-  }
 }
 
 function handleResponse(response) {
+  console.log(response, 'response is');
   if (response.ok) {
     return response;
   }
 
-  const error = new Error(response);
-  error.response = response;
-  throw error;
+  return Promise.reject(response);
 }
 
 function initGame(firstName, surname, game, role) {
@@ -59,5 +53,11 @@ export function submit(firstName, surname, game, role) {
       dispatch(initGame(firstName, surname, game, role));
       dispatch(routeActions.push('/game'));
     })
-    .catch(error => showError(error));
+    .catch(error => {
+      error.json().then(r => {
+        console.log('error is', r)
+        alert(r.error);
+      });
+    });
 }
+
