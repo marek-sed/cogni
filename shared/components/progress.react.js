@@ -20,8 +20,8 @@ class Progress extends Component {
   }
 
   render() {
-    const {progress} = this.props;
-    console.log(progress);
+    const {progress, joining} = this.props;
+    console.log('progresss props ', this.props);
 
     const max1 = progress.length > 0 && _.maxBy(progress, o => o.score1).score1;
     const max2 = progress.length > 0 && _.maxBy(progress, o => o.score2).score2;
@@ -38,12 +38,47 @@ class Progress extends Component {
         <td>{x.score1}</td>
         <td>{x.score2}</td>
         <td>{x.time}</td>
-      </tr>)
+      </tr>);
     });
+
+      const renderJoiningCell = (player) => {
+          if(player) {
+              return <td>{player.frstName} {player.surname}</td>
+          }
+
+          return <td>not connected</td>;
+      }
+      const renderJoining = joining.map((x, i) => {
+          return (
+              <tr key={i}>
+                  <td>{x.gameName}</td>
+                  {renderJoiningCell(x.players.Sender)}
+                  {renderJoiningCell(x.players.Receiver)}
+                  {renderJoiningCell(x.players.Eavesdropper)}
+              </tr>
+          )
+      })
 
     return (
       <div className="progress">
-        {this.props.joining}
+          <div>
+              <h3>Joining</h3>
+              <table>
+                  <thead>
+                      <tr>
+                          <td>game name</td>
+                          <td>Sender</td>
+                          <td>Receiver</td>
+                          <td>Eavesdropper</td>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {renderJoining}
+                  </tbody>
+              </table>
+          </div>
+          <div>
+              <h3>Progress</h3>
         <table>
           <thead>
             <tr>
@@ -59,6 +94,7 @@ class Progress extends Component {
             {renderLines}
           </tbody>
         </table>
+          </div>
       </div>
     )
   }

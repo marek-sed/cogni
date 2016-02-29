@@ -5,7 +5,7 @@ export function updateProgress(data) {
     type:    UPDATE_PROGRESS,
     payload: {
       progress: data.progress,
-      joining:  data.joiningProgress
+      joining:  data.joining
     }
   }
 }

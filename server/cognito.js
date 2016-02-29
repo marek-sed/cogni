@@ -472,12 +472,12 @@ export function connectProgress(socket) {
 }
 
 function getJoiningProgress() {
-  return Seq(games).reduce((acc, x) => {
+  return Seq(games).reduce((acc, x) => (
     acc.push({
       gameName: x.get('gameName'),
       players:  x.get('players').toJS()
     })
-  }, List([]))
+), List([]))
 }
 
 function getProgress() {
@@ -493,6 +493,7 @@ function getProgress() {
 }
 
 function emitProgress(progress = List([]), joining = List([])) {
+  console.log('joining', joining.toJS(), 'progress', progress.toJS())
   if(progressSocket) progressSocket.emit('updateProgress', {
     progress: progress.toJS(),
     joining:  joining.toJS()
