@@ -159,14 +159,21 @@ function subscribeToGame(gameName) {
 function subscribeToEndOfRoundPhase1(gameName, receiverSource) {
   console.log('subscribeToEndOfRoundPhase1');
   const sub = receiverSource.endTurn.subscribe(() => evaluateEndOfRound(gameName));
-  subscriptions = subscriptions.update(gameName, subs => subs.push(sub));
   games = games.setIn([gameName, 'endOfRoundSubscription'], sub);
+}
+
+// if timer runs out zip wont work, figure out how to do it properly with combining observables
+function resubscribeToEndOfRoundPhase2(gameName) {
+  console.log('resubscribe to end of round phase 2');
+  const {Eavesdropper, Receiver} = games.getIn([gameName, 'sources']).toJS();
+  const sub = games.getIn([gameName, 'endOfRoundSubscription']);
+  if(sub && !sub.m.isDisposed) sub.dispose();
+  subscribeToEndOfRoundPhase2(gameName, Eavesdropper, Receiver);
 }
 
 function subscribeToEndOfRoundPhase2(gameName, eavesdropperSource, receiverSource) {
   console.log('subscribeToEndOfRoundPhase2');
   const sub = eavesdropperSource.endTurn.zip(receiverSource.endTurn).subscribe(() => evaluateEndOfRound(gameName));
-  subscriptions = subscriptions.update(gameName, subs => subs.push(sub));
   games = games.setIn([gameName, 'endOfRoundSubscription'], sub);
 }
 
@@ -347,6 +354,7 @@ function endRound(gameName, result) {
   const phase = games.getIn([gameName, 'phase']);
   const ttsub = games.getIn([gameName, 'turnTimerSubscription']);
   ttsub.dispose();
+  if(phase === 2) resubscribeToEndOfRoundPhase2(gameName);
 
   recordRound(gameName, result);
   const progress = getProgress();
@@ -371,6 +379,8 @@ function endGame(gameName, endReason = 'finished') {
 
 function cleanSubscriptions(gameName) {
   const gameSubs = subscriptions.get(gameName);
+  const endOfRoundSub = games.getIn([gameName, 'endOfRoundSubscription']);
+  if(endOfRoundSub && !endOfRoundSub.m.isDisposed) endOfRoundSub.dispose();
   gameSubs.forEach(sub => sub.dispose());
 }
 
