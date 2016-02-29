@@ -7,8 +7,8 @@ import ActiveSession from './activeSession.react.js';
 class Setup extends Component {
 
   render() {
-    const {dispatch, isActive, name, numberOfGames, gameTime, turnTime, score1, score2, score3, score4} = this.props;
-    if(isActive) {
+    const {dispatch, isActive, isActiveSession, name, numberOfGames, gameTime, turnTime, score1, score2, score3, score4} = this.props;
+    if(isActiveSession || isActive) {
       return <ActiveSession {...this.props} />
     }
 
@@ -77,4 +77,4 @@ class Setup extends Component {
   }
 }
 
-export default connect(state => ({...state.setup.toJS()}))(Setup);
+export default connect(state => ({...state.setup.toJS(), isActiveSession: state.sessionInfo.isActive}))(Setup);
